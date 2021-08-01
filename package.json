@@ -1,0 +1,78 @@
+{
+  "name": "use-record-set",
+  "version": "0.0.0",
+  "description": "A React hook for quickly prototyping data models.",
+  "repository": "github:haydn/use-record-set",
+  "keywords": [
+    "GraphQL",
+    "prototyping",
+    "data"
+  ],
+  "main": "cjs/index.js",
+  "author": "Haydn Ewers",
+  "license": "MIT",
+  "private": false,
+  "engines": {
+    "node": ">=14"
+  },
+  "scripts": {
+    "build": "yarn build:declaration && yarn build:cjs && yarn build:umd && yarn build:esm",
+    "build:declaration": "tsc index.ts --declaration --emitDeclarationOnly && flowgen index.d.ts -o index.js.flow",
+    "build:cjs": "tsc index.ts --target ES2015 --module CommonJS --outDir cjs",
+    "build:umd": "tsc index.ts --target ES2015 --module UMD --moduleResolution node --outDir umd",
+    "build:esm": "tsc index.ts --target ESNext --module ESNext --moduleResolution node --outDir esm",
+    "build:test": "tsc test.ts --target ES2015 --module CommonJS --esModuleInterop",
+    "release": "np",
+    "test": "yarn test:prettier && yarn test:jest",
+    "test:prettier": "prettier -c index.ts README.md test.ts",
+    "test:jest": "yarn build:test && yarn jest test.js",
+    "version": "yarn build"
+  },
+  "files": [
+    "index.d.ts",
+    "index.js.flow",
+    "cjs/index.js",
+    "umd/index.js",
+    "esm/index.js",
+    "LICENSE",
+    "README.md"
+  ],
+  "dependencies": {
+    "graphql": "^15.5.1",
+    "uuid": "^8.3.2"
+  },
+  "peerDependencies": {
+    "react": "^17.0.2"
+  },
+  "devDependencies": {
+    "@types/dedent": "^0.7.0",
+    "@types/jest": "^26.0.24",
+    "@types/node": "^16.4.9",
+    "@types/react": "^17.0.15",
+    "dedent": "^0.7.0",
+    "flowgen": "^1.14.1",
+    "graphql-tag": "^2.12.5",
+    "jest": "^27.0.6",
+    "np": "^7.5.0",
+    "prettier": "^2.3.2",
+    "react": "^17.0.2",
+    "typescript": "^4.3.5"
+  },
+  "prettier": {
+    "arrowParens": "always",
+    "bracketSpacing": true,
+    "jsxBracketSameLine": false,
+    "jsxSingleQuote": false,
+    "printWidth": 100,
+    "proseWrap": "never",
+    "quoteProps": "as-needed",
+    "semi": true,
+    "singleQuote": false,
+    "tabWidth": 2,
+    "trailingComma": "all",
+    "useTabs": false
+  },
+  "jest": {
+    "testEnvironment": "jsdom"
+  }
+}
