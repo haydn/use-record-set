@@ -56,7 +56,7 @@ const schema = {
         type: "String",
       },
       groups: {
-        type: "InverseRelation",
+        type: "Inverse",
         sources: [
           {
             type: "Group",
@@ -98,12 +98,14 @@ import { useRecordSet, updateRecordSet } from "./useRecordSet";
 const MyComponent = () => {
   const { group } = useRecordSet(
     gql`
-      query($id: String) {
+      query ($id: String) {
         group(id: $id) {
-          members: {
-            id,
-            name,
-            groups: {
+          id
+          name
+          members {
+            id
+            name
+            groups {
               id
               name
             }

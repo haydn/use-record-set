@@ -1,7 +1,16 @@
 import { printSchema, execute } from "graphql";
 import gql from "graphql-tag";
 import dedent from "dedent";
-import { Schema, RecordSet } from "./index.js";
+import {
+  Schema,
+  RecordSet,
+  StringField,
+  NumberField,
+  BooleanField,
+  DateField,
+  ForeignKeyField,
+  InverseField,
+} from "./index.js";
 
 const MINIMAL_SCHEMA: Schema = {
   Record: {
@@ -87,35 +96,35 @@ const INVERSE_RELATIONS_SCHEMA: Schema = {
         cardinality: "oneToMany",
       },
       inverseManyToMany: {
-        type: "InverseRelation",
+        type: "Inverse",
         source: {
           type: "Record",
           field: "manyToMany",
         },
       },
       inverseManyToOne: {
-        type: "InverseRelation",
+        type: "Inverse",
         source: {
           type: "Record",
           field: "manyToOne",
         },
       },
       inverseOneToOne: {
-        type: "InverseRelation",
+        type: "Inverse",
         source: {
           type: "Record",
           field: "oneToOne",
         },
       },
       inverseOneToMany: {
-        type: "InverseRelation",
+        type: "Inverse",
         source: {
           type: "Record",
           field: "oneToMany",
         },
       },
       inverseMultiple: {
-        type: "InverseRelation",
+        type: "Inverse",
         source: [
           {
             type: "Record",
@@ -163,7 +172,7 @@ const COMPLEX_SCHEMA: Schema = {
         cardinality: "manyToMany",
       },
       reports: {
-        type: "InverseRelation",
+        type: "Inverse",
         source: {
           type: "Role",
           field: "lineManager",
@@ -178,7 +187,7 @@ const COMPLEX_SCHEMA: Schema = {
     },
     fields: {
       owner: {
-        type: "InverseRelation",
+        type: "Inverse",
         source: {
           type: "Role",
           field: "responsibilities",
@@ -193,7 +202,7 @@ const COMPLEX_SCHEMA: Schema = {
     },
     fields: {
       role: {
-        type: "InverseRelation",
+        type: "Inverse",
         source: {
           type: "Role",
           field: "holder",
@@ -208,7 +217,7 @@ const COMPLEX_SCHEMA: Schema = {
     },
     fields: {
       members: {
-        type: "InverseRelation",
+        type: "Inverse",
         source: {
           type: "Role",
           field: "teams",
@@ -496,6 +505,55 @@ describe("RecordSet schema generation", () => {
           createRecord(id: String): Record
           updateRecord(id: String!): Record
           deleteRecord(id: String!): Record
+        }
+      `.trim(),
+    );
+  });
+
+  test.skip("complex", () => {
+    const recordSet = new RecordSet(COMPLEX_SCHEMA);
+    expect(printSchema(recordSet.schema).trim()).toBe(
+      dedent`
+        schema {
+          query: RootQueryType
+          mutation: RootMutationType
+        }
+
+        type RootQueryType {
+          relationships(foreignKeys: [ForeignKeyInput]): [Relationship]
+          role(id: String!): Role
+          roles(ids: [String!]): [Role]!
+          # TODO
+        }
+
+        type Relationship {
+          source: Node
+          target: Node
+        }
+
+        interface Node {
+          id: String!
+        }
+
+        input ForeignKeyInput {
+          type: String!
+          field: String!
+        }
+
+        type Role implements Node {
+          id: String!
+          # TODO
+        }
+
+        # TODO
+
+        type RootMutationType {
+          addRelationship(field: String!, source: String!, target: String!): Node
+          removeRelationship(field: String!, source: String!, target: String!): Node
+          createRole(id: String): Role
+          updateRole(id: String!): Role
+          deleteRole(id: String!): Role
+        # TODO
         }
       `.trim(),
     );
@@ -1438,4 +1496,210 @@ describe("RecordSet mutation resolution", () => {
 
     recordSet.removeEventListener("change", mockHandler);
   });
+});
+
+describe("RecordSet query", () => {
+  test("variables", () => {
+    const recordSet = new RecordSet(
+      {
+        Thing: {
+          meta: {
+            singular: "thing",
+            plural: "things",
+          },
+          fields: {
+            name: {
+              type: "String",
+            },
+          },
+        },
+      },
+      {
+        init: [
+          {
+            type: "Thing",
+            id: "3a3b76bc-5146-4ed2-a00c-3b11003f4f1b",
+            name: "Example thing",
+          },
+        ],
+      },
+    );
+
+    expect(
+      recordSet.query(
+        gql`
+          query ($id: String) {
+            thing(id: $id) {
+              name
+            }
+          }
+        `,
+        { id: "3a3b76bc-5146-4ed2-a00c-3b11003f4f1b" },
+      ),
+    ).toEqual({
+      thing: {
+        name: "Example thing",
+      },
+    });
+  });
+
+  test("error handling", () => {
+    const recordSet = new RecordSet({
+      Thing: {
+        meta: {
+          singular: "thing",
+          plural: "things",
+        },
+        fields: {
+          name: {
+            type: "String",
+          },
+        },
+      },
+    });
+
+    console.log = jest.fn();
+
+    expect(
+      recordSet.query(gql`
+        query {
+          thing {
+            id
+          }
+        }
+      `),
+    ).toEqual({
+      thing: null,
+    });
+
+    expect(console.log).toHaveBeenCalled();
+  });
+});
+
+describe("helpers", () => {
+  const recordSet = new RecordSet({
+    Role: {
+      meta: {
+        singular: "role",
+        plural: "roles",
+      },
+      fields: {
+        name: StringField(),
+        rank: NumberField(),
+        isArchived: BooleanField(),
+        dateCreated: DateField(),
+        lineManager: ForeignKeyField("manyToOne"),
+        responsibilities: ForeignKeyField("oneToMany"),
+        holder: ForeignKeyField("oneToOne"),
+        teams: ForeignKeyField("manyToMany"),
+        reports: InverseField("Role#lineManager"),
+      },
+    },
+    Responsibility: {
+      meta: {
+        singular: "responsibility",
+        plural: "responsibilities",
+      },
+      fields: {
+        owner: InverseField("Role#responsibilities"),
+      },
+    },
+    Person: {
+      meta: {
+        singular: "person",
+        plural: "people",
+      },
+      fields: {
+        role: InverseField("Role#holder"),
+      },
+    },
+    Team: {
+      meta: {
+        singular: "team",
+        plural: "teams",
+      },
+      fields: {
+        members: InverseField("Role#teams"),
+      },
+    },
+  });
+  expect(printSchema(recordSet.schema).trim()).toBe(
+    dedent`
+      schema {
+        query: RootQueryType
+        mutation: RootMutationType
+      }
+
+      type RootQueryType {
+        relationships(foreignKeys: [ForeignKeyInput]): [Relationship]
+        role(id: String!): Role
+        roles(ids: [String!]): [Role]!
+        responsibility(id: String!): Responsibility
+        responsibilities(ids: [String!]): [Responsibility]!
+        person(id: String!): Person
+        people(ids: [String!]): [Person]!
+        team(id: String!): Team
+        teams(ids: [String!]): [Team]!
+      }
+
+      type Relationship {
+        source: Node
+        target: Node
+      }
+
+      interface Node {
+        id: String!
+      }
+
+      input ForeignKeyInput {
+        type: String!
+        field: String!
+      }
+
+      type Role implements Node {
+        id: String!
+        name: String
+        rank: Float
+        isArchived: Boolean
+        dateCreated: String
+        lineManager: Node
+        responsibilities: [Node]!
+        holder: Node
+        teams: [Node]!
+        reports: [Node]!
+      }
+
+      type Responsibility implements Node {
+        id: String!
+        owner: Node
+      }
+
+      type Person implements Node {
+        id: String!
+        role: Node
+      }
+
+      type Team implements Node {
+        id: String!
+        members: [Node]!
+      }
+
+      type RootMutationType {
+        addRelationship(field: String!, source: String!, target: String!): Node
+        removeRelationship(field: String!, source: String!, target: String!): Node
+        createRole(id: String, name: String, rank: Float, isArchived: Boolean, dateCreated: String): Role
+        updateRole(id: String!, name: String, rank: Float, isArchived: Boolean, dateCreated: String): Role
+        deleteRole(id: String!): Role
+        createResponsibility(id: String): Responsibility
+        updateResponsibility(id: String!): Responsibility
+        deleteResponsibility(id: String!): Responsibility
+        createPerson(id: String): Person
+        updatePerson(id: String!): Person
+        deletePerson(id: String!): Person
+        createTeam(id: String): Team
+        updateTeam(id: String!): Team
+        deleteTeam(id: String!): Team
+      }
+    `.trim(),
+  );
 });

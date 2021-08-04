@@ -1,8 +1,8 @@
 import {
   DocumentNode,
-  execute,
   ExecutionResult,
   GraphQLBoolean,
+  GraphQLFieldConfigMap,
   GraphQLFloat,
   GraphQLInputObjectType,
   GraphQLInterfaceType,
@@ -11,9 +11,10 @@ import {
   GraphQLObjectType,
   GraphQLSchema,
   GraphQLString,
-  GraphQLFieldConfigMap,
+  execute,
 } from "graphql";
 import { useEffect, useState } from "react";
+
 import { v4 as uuid } from "uuid";
 
 export type Record = {
@@ -34,7 +35,7 @@ export type Schema = {
   };
 };
 
-type SchemaField =
+export type SchemaField =
   | {
       type: "String";
       // init?: () => string;
@@ -56,7 +57,7 @@ type SchemaField =
       cardinality: "oneToOne" | "oneToMany" | "manyToMany" | "manyToOne";
     }
   | {
-      type: "InverseRelation";
+      type: "Inverse";
       // FIXME: These types could probably be constrained somehow…
       source:
         | {
@@ -127,8 +128,13 @@ class RecordSet extends EventTarget {
     this.generateSchema(schema);
   }
 
-  public query(query: DocumentNode, variables: {}) {
-    const { data } = execute(this.schema, query, null, variables) as ExecutionResult;
+  public query(query: DocumentNode, variables = {}) {
+    const { data, errors } = execute(this.schema, query, null, null, variables) as ExecutionResult;
+    if (Array.isArray(errors)) {
+      for (let error of errors) {
+        console.log(error);
+      }
+    }
     return data;
   }
 
@@ -209,7 +215,7 @@ class RecordSet extends EventTarget {
               }
               break;
             }
-            case "InverseRelation": {
+            case "Inverse": {
               const source = f.source;
               if (Array.isArray(source)) {
                 result[field] = {
@@ -344,7 +350,7 @@ class RecordSet extends EventTarget {
           },
           ...Object.entries(schema[type].fields).reduce(
             (result, [name, field]) =>
-              field.type === "ForeignKey" || field.type === "InverseRelation"
+              field.type === "ForeignKey" || field.type === "Inverse"
                 ? result
                 : {
                     ...result,
@@ -374,7 +380,7 @@ class RecordSet extends EventTarget {
           },
           ...Object.entries(schema[type].fields).reduce(
             (result, [name, field]) =>
-              field.type === "ForeignKey" || field.type === "InverseRelation"
+              field.type === "ForeignKey" || field.type === "Inverse"
                 ? result
                 : {
                     ...result,
@@ -553,11 +559,7 @@ const resolveInverseOneToMany = (records: Array<Record>, field: string, id: stri
     return Array.isArray(x) ? x.includes(id) : false;
   });
 
-const useRecordSet = (
-  recordSet: RecordSet,
-  query: DocumentNode,
-  variables: { [key: string]: any },
-) => {
+const useRecordSet = (recordSet: RecordSet, query: DocumentNode, variables = {}) => {
   const [result, updateResult] = useState<ExecutionResult>(recordSet.query(query, variables));
 
   useEffect(() => {
@@ -577,11 +579,63 @@ const createRecordSet = (schema: Schema, config?: Partial<Config>) => {
   const recordSet = new RecordSet(schema, config);
   return {
     recordSet,
-    useRecordSet: (query: DocumentNode, variables: { [key: string]: any }) =>
+    useRecordSet: (query: DocumentNode, variables = {}) =>
       useRecordSet(recordSet, query, variables),
-    updateRecordSet: (query: DocumentNode, variables: { [key: string]: any }) =>
-      recordSet.query(query, variables),
+    updateRecordSet: (query: DocumentNode, variables = {}) => recordSet.query(query, variables),
   };
 };
 
-export { RecordSet, useRecordSet, createRecordSet };
+const StringField = (): { type: "String" } => ({ type: "String" });
+
+const NumberField = (): { type: "Number" } => ({ type: "Number" });
+
+const BooleanField = (): { type: "Boolean" } => ({ type: "Boolean" });
+
+const DateField = (): { type: "Date" } => ({ type: "Date" });
+
+const ForeignKeyField = (
+  cardinality: "oneToOne" | "oneToMany" | "manyToMany" | "manyToOne",
+): { type: "ForeignKey"; cardinality: "oneToOne" | "oneToMany" | "manyToMany" | "manyToOne" } => ({
+  type: "ForeignKey",
+  cardinality,
+});
+
+const InverseField = (
+  source: String | Array<String>,
+): {
+  type: "Inverse";
+  source:
+    | {
+        type: string;
+        field: string;
+      }
+    | Array<{
+        type: string;
+        field: string;
+      }>;
+} => {
+  if (Array.isArray(source)) {
+    return {
+      type: "Inverse",
+      source: source.map((s) => {
+        const [type, field] = s.split("#");
+        return { type, field };
+      }),
+    };
+  } else {
+    const [type, field] = source.split("#");
+    return { type: "Inverse", source: { type, field } };
+  }
+};
+
+export {
+  RecordSet,
+  createRecordSet,
+  useRecordSet,
+  StringField,
+  NumberField,
+  BooleanField,
+  DateField,
+  ForeignKeyField,
+  InverseField,
+};
