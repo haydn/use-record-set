@@ -567,10 +567,11 @@ const useRecordSet = (recordSet: RecordSet, query: DocumentNode, variables = {})
       updateResult(recordSet.query(query, variables));
     };
     recordSet.addEventListener("change", changeHandler);
+    changeHandler();
     return () => {
       recordSet.removeEventListener("change", changeHandler);
     };
-  }, []);
+  }, [recordSet, query, variables]);
 
   return result;
 };
