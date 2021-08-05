@@ -576,7 +576,7 @@ describe("RecordSet query resolution", () => {
     ).toEqual({ data: { relationships: [] } });
   });
 
-  test("minimal schema", () => {
+  test("single record", () => {
     const recordSet = new RecordSet(MINIMAL_SCHEMA, {
       init: [
         {
@@ -594,9 +594,6 @@ describe("RecordSet query resolution", () => {
             record(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
             }
-            records(ids: ["267d5cb0-90aa-471c-b5fc-3b31afd73184"]) {
-              id
-            }
           }
         `,
       ),
@@ -605,6 +602,65 @@ describe("RecordSet query resolution", () => {
         record: {
           id: "267d5cb0-90aa-471c-b5fc-3b31afd73184",
         },
+      },
+    });
+  });
+
+  test("multiple records", () => {
+    const recordSet = new RecordSet(MINIMAL_SCHEMA, {
+      init: [
+        {
+          type: "Record",
+          id: "267d5cb0-90aa-471c-b5fc-3b31afd73184",
+        },
+      ],
+    });
+
+    expect(
+      execute(
+        recordSet.schema,
+        gql`
+          query {
+            records(ids: ["267d5cb0-90aa-471c-b5fc-3b31afd73184"]) {
+              id
+            }
+          }
+        `,
+      ),
+    ).toEqual({
+      data: {
+        records: [
+          {
+            id: "267d5cb0-90aa-471c-b5fc-3b31afd73184",
+          },
+        ],
+      },
+    });
+  });
+
+  test("all records", () => {
+    const recordSet = new RecordSet(MINIMAL_SCHEMA, {
+      init: [
+        {
+          type: "Record",
+          id: "267d5cb0-90aa-471c-b5fc-3b31afd73184",
+        },
+      ],
+    });
+
+    expect(
+      execute(
+        recordSet.schema,
+        gql`
+          query {
+            records {
+              id
+            }
+          }
+        `,
+      ),
+    ).toEqual({
+      data: {
         records: [
           {
             id: "267d5cb0-90aa-471c-b5fc-3b31afd73184",
@@ -642,15 +698,6 @@ describe("RecordSet query resolution", () => {
                 date
               }
             }
-            records(ids: ["267d5cb0-90aa-471c-b5fc-3b31afd73184"]) {
-              id
-              ... on Record {
-                string
-                number
-                boolean
-                date
-              }
-            }
           }
         `,
       ),
@@ -663,15 +710,6 @@ describe("RecordSet query resolution", () => {
           boolean: true,
           date: "2021-06-17T19:54:14Z",
         },
-        records: [
-          {
-            id: "267d5cb0-90aa-471c-b5fc-3b31afd73184",
-            string: "hello",
-            number: 1,
-            boolean: true,
-            date: "2021-06-17T19:54:14Z",
-          },
-        ],
       },
     });
   });
@@ -710,21 +748,6 @@ describe("RecordSet query resolution", () => {
                 id
               }
             }
-            records(ids: ["267d5cb0-90aa-471c-b5fc-3b31afd73184"]) {
-              id
-              manyToMany {
-                id
-              }
-              manyToOne {
-                id
-              }
-              oneToOne {
-                id
-              }
-              oneToMany {
-                id
-              }
-            }
           }
         `,
       ),
@@ -737,15 +760,6 @@ describe("RecordSet query resolution", () => {
           oneToOne: { id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" },
           oneToMany: [{ id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" }],
         },
-        records: [
-          {
-            id: "267d5cb0-90aa-471c-b5fc-3b31afd73184",
-            manyToMany: [{ id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" }],
-            manyToOne: { id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" },
-            oneToOne: { id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" },
-            oneToMany: [{ id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" }],
-          },
-        ],
       },
     });
   });
@@ -795,24 +809,6 @@ describe("RecordSet query resolution", () => {
                 id
               }
             }
-            records(ids: ["71dddd29-680d-4dbd-92ed-2ea085a569cb"]) {
-              id
-              inverseManyToMany {
-                id
-              }
-              inverseManyToOne {
-                id
-              }
-              inverseOneToOne {
-                id
-              }
-              inverseOneToMany {
-                id
-              }
-              inverseMultiple {
-                id
-              }
-            }
           }
         `,
       ),
@@ -826,16 +822,6 @@ describe("RecordSet query resolution", () => {
           inverseOneToMany: { id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" },
           inverseMultiple: [{ id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" }],
         },
-        records: [
-          {
-            id: "71dddd29-680d-4dbd-92ed-2ea085a569cb",
-            inverseManyToMany: [{ id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" }],
-            inverseManyToOne: [{ id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" }],
-            inverseOneToOne: { id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" },
-            inverseOneToMany: { id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" },
-            inverseMultiple: [{ id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" }],
-          },
-        ],
       },
     });
   });

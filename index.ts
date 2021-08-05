@@ -340,7 +340,7 @@ class RecordSet extends EventTarget {
         resolve: (_, { ids }) =>
           Array.isArray(ids)
             ? ids.map((id) => this.records.find((record) => record.id === id))
-            : [],
+            : this.records.filter((record) => record.type === type),
       };
       dynamicMutationFields[`create${type}`] = {
         type: dynamicTypes[type],
