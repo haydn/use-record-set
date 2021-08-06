@@ -563,24 +563,20 @@ const createRecordSet = (schema: Schema, config?: Partial<Config>) => {
   const recordSet = new RecordSet(schema, config);
   return {
     recordSet,
-    useRecordSet: (query: DocumentNode, variables = {}) => {
-      const [result, updateResult] = useState<ExecutionResult>(recordSet.query(query, variables));
-
-      useEffect(() => {
-        updateResult(recordSet.query(query, variables));
-      }, [query, variables]);
+    useRecordSet: (query, variables = {}) => {
+      const [, setTick] = useState(0);
 
       useEffect(() => {
         const changeHandler = () => {
-          updateResult(recordSet.query(query, variables));
+          setTick((x) => x + 1);
         };
         recordSet.addEventListener("change", changeHandler);
         return () => {
           recordSet.removeEventListener("change", changeHandler);
         };
-      }, [query, variables]);
+      });
 
-      return result;
+      return recordSet.query(query, variables);
     },
     updateRecordSet: (query: DocumentNode, variables = {}) => recordSet.query(query, variables),
   };
