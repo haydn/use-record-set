@@ -559,29 +559,29 @@ const resolveInverseOneToMany = (records: Array<Record>, field: string, id: stri
     return Array.isArray(x) ? x.includes(id) : false;
   });
 
-const useRecordSet = (recordSet: RecordSet, query: DocumentNode, variables = {}) => {
-  const [result, updateResult] = useState<ExecutionResult>(recordSet.query(query, variables));
-
-  useEffect(() => {
-    const changeHandler = () => {
-      updateResult(recordSet.query(query, variables));
-    };
-    recordSet.addEventListener("change", changeHandler);
-    changeHandler();
-    return () => {
-      recordSet.removeEventListener("change", changeHandler);
-    };
-  }, [recordSet, query, variables]);
-
-  return result;
-};
-
 const createRecordSet = (schema: Schema, config?: Partial<Config>) => {
   const recordSet = new RecordSet(schema, config);
   return {
     recordSet,
-    useRecordSet: (query: DocumentNode, variables = {}) =>
-      useRecordSet(recordSet, query, variables),
+    useRecordSet: (query: DocumentNode, variables = {}) => {
+      const [result, updateResult] = useState<ExecutionResult>(recordSet.query(query, variables));
+
+      useEffect(() => {
+        updateResult(recordSet.query(query, variables));
+      }, [query, variables]);
+
+      useEffect(() => {
+        const changeHandler = () => {
+          updateResult(recordSet.query(query, variables));
+        };
+        recordSet.addEventListener("change", changeHandler);
+        return () => {
+          recordSet.removeEventListener("change", changeHandler);
+        };
+      }, [query, variables]);
+
+      return result;
+    },
     updateRecordSet: (query: DocumentNode, variables = {}) => recordSet.query(query, variables),
   };
 };
@@ -632,7 +632,6 @@ const InverseField = (
 export {
   RecordSet,
   createRecordSet,
-  useRecordSet,
   StringField,
   NumberField,
   BooleanField,
