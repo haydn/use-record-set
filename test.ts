@@ -1291,6 +1291,126 @@ describe("RecordSet mutation resolution", () => {
     recordSet.removeEventListener("change", mockHandler);
   });
 
+  test("addRelationship enforce unique one-to-x relationships", () => {
+    const recordSet = new RecordSet(COMPLEX_SCHEMA, {
+      init: [
+        {
+          type: "Role",
+          id: "267d5cb0-90aa-471c-b5fc-3b31afd73184",
+          holder: "0fce7933-b729-4c8b-bec5-f3b261e2f5a9",
+          responsibilities: ["50617c1a-1398-40a2-9d36-fdac87e2e9aa"],
+        },
+        {
+          type: "Role",
+          id: "b7290c75-9f4b-4b3c-987d-3ea5b7a707ed",
+          holder: undefined,
+          responsibilities: [],
+        },
+        {
+          type: "Responsibility",
+          id: "50617c1a-1398-40a2-9d36-fdac87e2e9aa",
+        },
+        {
+          type: "Person",
+          id: "0fce7933-b729-4c8b-bec5-f3b261e2f5a9",
+        },
+      ],
+    });
+
+    expect(
+      execute(
+        recordSet.schema,
+        gql`
+          mutation {
+            addRelationship(
+              field: "holder"
+              source: "b7290c75-9f4b-4b3c-987d-3ea5b7a707ed"
+              target: "0fce7933-b729-4c8b-bec5-f3b261e2f5a9"
+            ) {
+              id
+              ... on Role {
+                holder {
+                  id
+                }
+              }
+            }
+          }
+        `,
+      ),
+    ).toEqual({
+      data: {
+        addRelationship: {
+          id: "b7290c75-9f4b-4b3c-987d-3ea5b7a707ed",
+          holder: {
+            id: "0fce7933-b729-4c8b-bec5-f3b261e2f5a9",
+          },
+        },
+      },
+    });
+
+    expect(
+      execute(
+        recordSet.schema,
+        gql`
+          mutation {
+            addRelationship(
+              field: "responsibilities"
+              source: "b7290c75-9f4b-4b3c-987d-3ea5b7a707ed"
+              target: "50617c1a-1398-40a2-9d36-fdac87e2e9aa"
+            ) {
+              id
+              ... on Role {
+                responsibilities {
+                  id
+                }
+              }
+            }
+          }
+        `,
+      ),
+    ).toEqual({
+      data: {
+        addRelationship: {
+          id: "b7290c75-9f4b-4b3c-987d-3ea5b7a707ed",
+          responsibilities: [
+            {
+              id: "50617c1a-1398-40a2-9d36-fdac87e2e9aa",
+            },
+          ],
+        },
+      },
+    });
+
+    expect(
+      execute(
+        recordSet.schema,
+        gql`
+          query {
+            role(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
+              id
+              ... on Role {
+                holder {
+                  id
+                }
+                responsibilities {
+                  id
+                }
+              }
+            }
+          }
+        `,
+      ),
+    ).toEqual({
+      data: {
+        role: {
+          id: "267d5cb0-90aa-471c-b5fc-3b31afd73184",
+          holder: null,
+          responsibilities: [],
+        },
+      },
+    });
+  });
+
   test("removeRelationship", () => {
     const recordSet = new RecordSet(COMPLEX_SCHEMA, {
       init: [

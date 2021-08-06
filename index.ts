@@ -483,12 +483,29 @@ class RecordSet extends EventTarget {
               );
             }
             if (f.cardinality === "manyToMany" || f.cardinality === "oneToMany") {
+              if (f.cardinality === "oneToMany") {
+                for (let record of this.records) {
+                  if (record.type === sourceRecord.type) {
+                    const current = record[field];
+                    if (Array.isArray(current)) {
+                      record[field] = current.filter((x) => x !== target);
+                    }
+                  }
+                }
+              }
               const current = sourceRecord[field];
               const currentArray = Array.isArray(current) ? current : [];
               sourceRecord[field] = currentArray.includes(target)
                 ? currentArray
                 : [...currentArray, target];
             } else {
+              if (f.cardinality === "oneToOne") {
+                for (let record of this.records) {
+                  if (record.type === sourceRecord.type && record[field] === target) {
+                    record[field] = undefined;
+                  }
+                }
+              }
               sourceRecord[field] = target;
             }
             this.dispatchEvent(new Event("change"));
