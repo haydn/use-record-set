@@ -33,7 +33,7 @@ npm:
 npm install use-record-set graphql-tag
 ```
 
-Note: [graphql-tag](https://github.com/apollographql/graphql-tag) is used to
+Note: [graphql-tag](https://github.com/apollographql/graphql-tag) is recommend to parse GraphQL queries.
 
 ## Usage
 
