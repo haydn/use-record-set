@@ -9,6 +9,16 @@
   </p>
 </div>
 
+## Features
+
+- More powerful than local state, less complex than a full data layer.
+- Support for modeling one-to-one, one-to-many, many-to-many and many-to-one relationships.
+- Synchronous GraphQL queries and mutations to access and update data.
+- Flow and TypeScript declarations included.
+- CommonJS, UMD and ESM modules provided.
+
+Demo: https://09qzj.csb.app/
+
 ## Installation
 
 Yarn:
@@ -23,12 +33,12 @@ npm:
 npm install use-record-set graphql-tag
 ```
 
+Note: [graphql-tag](https://github.com/apollographql/graphql-tag) is used to
+
 ## Usage
 
 ```js
-// ./useRecordSet.js
-
-import { createRecordSet } from "use-record-set";
+import { createRecordSet, StringField, ForeignKeyField, InverseField } from "use-record-set";
 
 const schema = {
   Group: {
@@ -37,13 +47,8 @@ const schema = {
       plural: "groups",
     },
     fields: {
-      name: {
-        type: "String",
-      },
-      members: {
-        type: "ForeignKey",
-        cardinality: "manyToMany",
-      },
+      name: StringField(),
+      members: ForeignKeyField("manyToMany"),
     },
   },
   Person: {
@@ -52,18 +57,8 @@ const schema = {
       plural: "people",
     },
     fields: {
-      name: {
-        type: "String",
-      },
-      groups: {
-        type: "Inverse",
-        sources: [
-          {
-            type: "Group",
-            field: "members",
-          },
-        ],
-      },
+      name: StringField(),
+      groups: InverseField("Group#members"),
     },
   },
 };
@@ -73,6 +68,7 @@ const records = [
     type: "Group",
     id: "3d6ff8ff-d23e-4421-bfe1-b2fabd1ccb8c",
     name: "Group A",
+    members: ["7de3a1cf-5f26-4c56-b453-5dd2a33697fc"],
   },
   {
     type: "Person",
@@ -81,33 +77,27 @@ const records = [
   },
 ];
 
-const { useRecordSet, updateRecordSet } = createRecordSet(schema, {
-  init: records,
-  persistence: "url",
-  localStorageKey: "recordSet",
-});
-
-export { useRecordSet, updateRecordSet };
-```
-
-```js
-// ./index.js
-
-import { useRecordSet, updateRecordSet } from "./useRecordSet";
+const { useRecordSet } = createRecordSet(schema, { init: records });
 
 const MyComponent = () => {
   const { group } = useRecordSet(
     gql`
       query ($id: String) {
         group(id: $id) {
-          id
-          name
-          members {
+          ... on Group {
             id
             name
-            groups {
-              id
-              name
+            members {
+              ... on Person {
+                id
+                name
+                groups {
+                  ... on Group {
+                    id
+                    name
+                  }
+                }
+              }
             }
           }
         }
@@ -118,24 +108,7 @@ const MyComponent = () => {
   return (
     <ul>
       {group.members.map((member) => (
-        <li
-          key={member.id}
-          onClick={() => {
-            const result = updateRecordSet(
-              gql`
-                mutation ($source: String, $target: String) {
-                  removeRelationship(field: "members", source: $source, target: $target) {
-                    id
-                  }
-                }
-              `,
-              { source: group.id, target: id },
-            );
-            if (!result) {
-              throw Error("Unable to remove relationship");
-            }
-          }}
-        >
+        <li key={member.id}>
           {member.name}
           <ul>
             {member.groups.map((group) => (
