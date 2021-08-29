@@ -1,6 +1,8 @@
 import { printSchema, execute } from "graphql";
 import gql from "graphql-tag";
 import dedent from "dedent";
+import { toBase64, fromBase64 } from "js-base64";
+import { renderHook, act } from "@testing-library/react-hooks/dom/pure";
 import {
   Schema,
   RecordSet,
@@ -10,6 +12,9 @@ import {
   DateField,
   ForeignKeyField,
   InverseField,
+  LocalStoragePersistence,
+  UrlPersistence,
+  createRecordSet,
 } from "./index.js";
 
 const MINIMAL_SCHEMA: Schema = {
@@ -779,8 +784,6 @@ describe("RecordSet query resolution", () => {
           type: "Record",
           id: "71dddd29-680d-4dbd-92ed-2ea085a569cb",
           manyToMany: [],
-          manyToOne: undefined,
-          oneToOne: undefined,
           oneToMany: [],
         },
       ],
@@ -1303,7 +1306,6 @@ describe("RecordSet mutation resolution", () => {
         {
           type: "Role",
           id: "b7290c75-9f4b-4b3c-987d-3ea5b7a707ed",
-          holder: undefined,
           responsibilities: [],
         },
         {
@@ -1650,6 +1652,8 @@ describe("RecordSet query", () => {
   });
 
   test("error handling", () => {
+    const consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+
     const recordSet = new RecordSet({
       Thing: {
         meta: {
@@ -1664,8 +1668,6 @@ describe("RecordSet query", () => {
       },
     });
 
-    console.log = jest.fn();
-
     expect(
       recordSet.query(gql`
         query {
@@ -1679,133 +1681,422 @@ describe("RecordSet query", () => {
     });
 
     expect(console.log).toHaveBeenCalled();
+
+    consoleLogSpy.mockRestore();
   });
 });
 
-describe("helpers", () => {
-  const recordSet = new RecordSet({
-    Role: {
-      meta: {
-        singular: "role",
-        plural: "roles",
+describe("RecordSet persistence", () => {
+  test("custom", () => {
+    const persistence = {
+      load: jest
+        .fn()
+        .mockReturnValue([{ type: "Thing", id: "f365bb65-16b2-4053-bbf3-cd207afaa798" }]),
+      save: jest.fn(),
+    };
+    const recordSet = new RecordSet(
+      {
+        Thing: {
+          meta: {
+            singular: "thing",
+            plural: "things",
+          },
+          fields: {},
+        },
       },
-      fields: {
-        name: StringField(),
-        rank: NumberField(),
-        isArchived: BooleanField(),
-        dateCreated: DateField(),
-        lineManager: ForeignKeyField("manyToOne"),
-        responsibilities: ForeignKeyField("oneToMany"),
-        holder: ForeignKeyField("oneToOne"),
-        teams: ForeignKeyField("manyToMany"),
-        reports: InverseField("Role#lineManager"),
+      {
+        persistence,
       },
-    },
-    Responsibility: {
-      meta: {
-        singular: "responsibility",
-        plural: "responsibilities",
-      },
-      fields: {
-        owner: InverseField("Role#responsibilities"),
-      },
-    },
-    Person: {
-      meta: {
-        singular: "person",
-        plural: "people",
-      },
-      fields: {
-        role: InverseField("Role#holder"),
-      },
-    },
-    Team: {
-      meta: {
-        singular: "team",
-        plural: "teams",
-      },
-      fields: {
-        members: InverseField("Role#teams"),
-      },
-    },
+    );
+    recordSet.query(gql`
+      mutation {
+        createThing(id: "7cd41d28-810b-4f63-b527-5c376e2571be") {
+          id
+        }
+      }
+    `);
+    expect(persistence.load.mock.calls.length).toBe(1);
+    expect(persistence.save.mock.calls.length).toBe(1);
+    expect(persistence.save.mock.calls[0][0]).toEqual([
+      { type: "Thing", id: "f365bb65-16b2-4053-bbf3-cd207afaa798" },
+      { type: "Thing", id: "7cd41d28-810b-4f63-b527-5c376e2571be" },
+    ]);
   });
-  expect(printSchema(recordSet.schema).trim()).toBe(
-    dedent`
-      schema {
-        query: RootQueryType
-        mutation: RootMutationType
-      }
 
-      type RootQueryType {
-        relationships(foreignKeys: [ForeignKeyInput]): [Relationship]
-        role(id: String!): Role
-        roles(ids: [String!]): [Role]!
-        responsibility(id: String!): Responsibility
-        responsibilities(ids: [String!]): [Responsibility]!
-        person(id: String!): Person
-        people(ids: [String!]): [Person]!
-        team(id: String!): Team
-        teams(ids: [String!]): [Team]!
+  test("LocalStoragePersistence", () => {
+    const getItemSpy = jest
+      .spyOn(global.Storage.prototype, "getItem")
+      .mockReturnValue(
+        JSON.stringify([{ type: "Thing", id: "8681019f-6c9e-466c-8867-6844b1b7b3c6" }]),
+      );
+    const setItemSpy = jest.spyOn(global.Storage.prototype, "setItem");
+    const persistence = new LocalStoragePersistence();
+    const recordSet = new RecordSet(
+      {
+        Thing: {
+          meta: {
+            singular: "thing",
+            plural: "things",
+          },
+          fields: {},
+        },
+      },
+      {
+        persistence,
+      },
+    );
+    recordSet.query(gql`
+      mutation {
+        createThing(id: "a419c660-dcb6-4ed2-af4b-8a7fef2c0761") {
+          id
+        }
       }
+    `);
+    expect(getItemSpy.mock.calls.length).toBe(1);
+    expect(getItemSpy.mock.calls[0][0]).toBe("recordSet");
+    expect(setItemSpy.mock.calls.length).toBe(1);
+    expect(setItemSpy.mock.calls[0][0]).toBe("recordSet");
+    expect(setItemSpy.mock.calls[0][1]).toBe(
+      JSON.stringify([
+        { type: "Thing", id: "8681019f-6c9e-466c-8867-6844b1b7b3c6" },
+        { type: "Thing", id: "a419c660-dcb6-4ed2-af4b-8a7fef2c0761" },
+      ]),
+    );
+    getItemSpy.mockRestore();
+    setItemSpy.mockRestore();
+  });
 
-      type Relationship {
-        source: Node
-        target: Node
+  test("UrlPersistence", () => {
+    history.replaceState(
+      null,
+      "",
+      `#${toBase64(
+        JSON.stringify([{ type: "Thing", id: "0d07ed2f-20bb-414b-bea1-362a19bebda5" }]),
+        true,
+      )}`,
+    );
+    const setReplaceState = jest.spyOn(history, "replaceState");
+    const persistence = new UrlPersistence();
+    const recordSet = new RecordSet(
+      {
+        Thing: {
+          meta: {
+            singular: "thing",
+            plural: "things",
+          },
+          fields: {},
+        },
+      },
+      {
+        persistence,
+      },
+    );
+    recordSet.query(gql`
+      mutation {
+        createThing(id: "0888f6d3-33a2-4818-81e8-311adb5093ae") {
+          id
+        }
       }
+    `);
+    expect(setReplaceState.mock.calls.length).toBe(1);
+    expect(setReplaceState.mock.calls[0][2]).toBe(
+      `#${toBase64(
+        JSON.stringify([
+          { type: "Thing", id: "0d07ed2f-20bb-414b-bea1-362a19bebda5" },
+          { type: "Thing", id: "0888f6d3-33a2-4818-81e8-311adb5093ae" },
+        ]),
+        true,
+      )}`,
+    );
+    setReplaceState.mockRestore();
+    history.replaceState(null, "", " ");
+  });
+});
 
-      interface Node {
-        id: String!
-      }
+describe("schema helpers", () => {
+  test("StringField", () => {
+    expect(StringField()).toEqual({
+      type: "String",
+    });
+  });
 
-      input ForeignKeyInput {
-        type: String!
-        field: String!
-      }
+  test("NumberField", () => {
+    expect(NumberField()).toEqual({
+      type: "Number",
+    });
+  });
 
-      type Role implements Node {
-        id: String!
-        name: String
-        rank: Float
-        isArchived: Boolean
-        dateCreated: String
-        lineManager: Node
-        responsibilities: [Node]!
-        holder: Node
-        teams: [Node]!
-        reports: [Node]!
-      }
+  test("BooleanField", () => {
+    expect(BooleanField()).toEqual({
+      type: "Boolean",
+    });
+  });
 
-      type Responsibility implements Node {
-        id: String!
-        owner: Node
-      }
+  test("DateField", () => {
+    expect(DateField()).toEqual({
+      type: "Date",
+    });
+  });
 
-      type Person implements Node {
-        id: String!
-        role: Node
-      }
+  test("ForeignKeyField", () => {
+    expect(ForeignKeyField("manyToOne")).toEqual({
+      type: "ForeignKey",
+      cardinality: "manyToOne",
+    });
+    expect(ForeignKeyField("oneToMany")).toEqual({
+      type: "ForeignKey",
+      cardinality: "oneToMany",
+    });
+    expect(ForeignKeyField("oneToOne")).toEqual({
+      type: "ForeignKey",
+      cardinality: "oneToOne",
+    });
+    expect(ForeignKeyField("manyToMany")).toEqual({
+      type: "ForeignKey",
+      cardinality: "manyToMany",
+    });
+  });
 
-      type Team implements Node {
-        id: String!
-        members: [Node]!
-      }
+  test("DateField", () => {
+    expect(InverseField("Role#lineManager")).toEqual({
+      type: "Inverse",
+      source: {
+        type: "Role",
+        field: "lineManager",
+      },
+    });
+    expect(InverseField(["Role#lineManager", "Foo#bar"])).toEqual({
+      type: "Inverse",
+      source: [
+        {
+          type: "Role",
+          field: "lineManager",
+        },
+        {
+          type: "Foo",
+          field: "bar",
+        },
+      ],
+    });
+  });
 
-      type RootMutationType {
-        addRelationship(field: String!, source: String!, target: String!): Node
-        removeRelationship(field: String!, source: String!, target: String!): Node
-        createRole(id: String, name: String, rank: Float, isArchived: Boolean, dateCreated: String): Role
-        updateRole(id: String!, name: String, rank: Float, isArchived: Boolean, dateCreated: String): Role
-        deleteRole(id: String!): Role
-        createResponsibility(id: String): Responsibility
-        updateResponsibility(id: String!): Responsibility
-        deleteResponsibility(id: String!): Responsibility
-        createPerson(id: String): Person
-        updatePerson(id: String!): Person
-        deletePerson(id: String!): Person
-        createTeam(id: String): Team
-        updateTeam(id: String!): Team
-        deleteTeam(id: String!): Team
-      }
-    `.trim(),
-  );
+  test("full schema", () => {
+    const recordSet = new RecordSet({
+      Role: {
+        meta: {
+          singular: "role",
+          plural: "roles",
+        },
+        fields: {
+          name: StringField(),
+          rank: NumberField(),
+          isArchived: BooleanField(),
+          dateCreated: DateField(),
+          lineManager: ForeignKeyField("manyToOne"),
+          responsibilities: ForeignKeyField("oneToMany"),
+          holder: ForeignKeyField("oneToOne"),
+          teams: ForeignKeyField("manyToMany"),
+          reports: InverseField("Role#lineManager"),
+        },
+      },
+      Responsibility: {
+        meta: {
+          singular: "responsibility",
+          plural: "responsibilities",
+        },
+        fields: {
+          owner: InverseField("Role#responsibilities"),
+        },
+      },
+      Person: {
+        meta: {
+          singular: "person",
+          plural: "people",
+        },
+        fields: {
+          role: InverseField("Role#holder"),
+        },
+      },
+      Team: {
+        meta: {
+          singular: "team",
+          plural: "teams",
+        },
+        fields: {
+          members: InverseField("Role#teams"),
+        },
+      },
+    });
+    expect(printSchema(recordSet.schema).trim()).toBe(
+      dedent`
+        schema {
+          query: RootQueryType
+          mutation: RootMutationType
+        }
+
+        type RootQueryType {
+          relationships(foreignKeys: [ForeignKeyInput]): [Relationship]
+          role(id: String!): Role
+          roles(ids: [String!]): [Role]!
+          responsibility(id: String!): Responsibility
+          responsibilities(ids: [String!]): [Responsibility]!
+          person(id: String!): Person
+          people(ids: [String!]): [Person]!
+          team(id: String!): Team
+          teams(ids: [String!]): [Team]!
+        }
+
+        type Relationship {
+          source: Node
+          target: Node
+        }
+
+        interface Node {
+          id: String!
+        }
+
+        input ForeignKeyInput {
+          type: String!
+          field: String!
+        }
+
+        type Role implements Node {
+          id: String!
+          name: String
+          rank: Float
+          isArchived: Boolean
+          dateCreated: String
+          lineManager: Node
+          responsibilities: [Node]!
+          holder: Node
+          teams: [Node]!
+          reports: [Node]!
+        }
+
+        type Responsibility implements Node {
+          id: String!
+          owner: Node
+        }
+
+        type Person implements Node {
+          id: String!
+          role: Node
+        }
+
+        type Team implements Node {
+          id: String!
+          members: [Node]!
+        }
+
+        type RootMutationType {
+          addRelationship(field: String!, source: String!, target: String!): Node
+          removeRelationship(field: String!, source: String!, target: String!): Node
+          createRole(id: String, name: String, rank: Float, isArchived: Boolean, dateCreated: String): Role
+          updateRole(id: String!, name: String, rank: Float, isArchived: Boolean, dateCreated: String): Role
+          deleteRole(id: String!): Role
+          createResponsibility(id: String): Responsibility
+          updateResponsibility(id: String!): Responsibility
+          deleteResponsibility(id: String!): Responsibility
+          createPerson(id: String): Person
+          updatePerson(id: String!): Person
+          deletePerson(id: String!): Person
+          createTeam(id: String): Team
+          updateTeam(id: String!): Team
+          deleteTeam(id: String!): Team
+        }
+      `.trim(),
+    );
+  });
+});
+
+describe("useRecordSet", () => {
+  test("end to end", () => {
+    const { useRecordSet, updateRecordSet } = createRecordSet(
+      {
+        Role: {
+          meta: {
+            singular: "role",
+            plural: "roles",
+          },
+          fields: {
+            name: StringField(),
+            rank: NumberField(),
+            isArchived: BooleanField(),
+            dateCreated: DateField(),
+            lineManager: ForeignKeyField("manyToOne"),
+            responsibilities: ForeignKeyField("oneToMany"),
+            holder: ForeignKeyField("oneToOne"),
+            teams: ForeignKeyField("manyToMany"),
+            reports: InverseField("Role#lineManager"),
+          },
+        },
+        Responsibility: {
+          meta: {
+            singular: "responsibility",
+            plural: "responsibilities",
+          },
+          fields: {
+            owner: InverseField("Role#responsibilities"),
+          },
+        },
+        Person: {
+          meta: {
+            singular: "person",
+            plural: "people",
+          },
+          fields: {
+            role: InverseField("Role#holder"),
+          },
+        },
+        Team: {
+          meta: {
+            singular: "team",
+            plural: "teams",
+          },
+          fields: {
+            members: InverseField("Role#teams"),
+          },
+        },
+      },
+      {
+        persistence: "url",
+      },
+    );
+    const { result } = renderHook(() =>
+      useRecordSet(gql`
+        query {
+          roles {
+            id
+            name
+            rank
+          }
+        }
+      `),
+    );
+
+    act(() => {
+      updateRecordSet(gql`
+        mutation {
+          createRole(id: "de483855-adcb-4fad-9825-69bc72d3c35c", name: "Example", rank: 1)
+        }
+      `);
+    });
+
+    expect(result.current?.roles).toEqual([
+      {
+        id: "de483855-adcb-4fad-9825-69bc72d3c35c",
+        name: "Example",
+        rank: 1,
+      },
+    ]);
+
+    expect(JSON.parse(fromBase64(window.location.hash.slice(1).trim()))).toEqual([
+      {
+        type: "Role",
+        id: "de483855-adcb-4fad-9825-69bc72d3c35c",
+        name: "Example",
+        rank: 1,
+      },
+    ]);
+  });
 });

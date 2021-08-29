@@ -14,8 +14,8 @@ import {
   execute,
 } from "graphql";
 import { useEffect, useState } from "react";
-
 import { v4 as uuid } from "uuid";
+import { toBase64, fromBase64 } from "js-base64";
 
 export type Record = {
   type: string;
@@ -72,9 +72,13 @@ export type SchemaField =
 
 export type Config = {
   init: Array<Record>;
-  persistence: "none" | "url" | "localStorage";
-  localStorageKey: string;
+  persistence: Persistence | null;
 };
+
+interface Persistence {
+  load(): Array<Record> | null;
+  save(records: Array<Record>): void;
+}
 
 const FIELD_TYPE_MAP = {
   Boolean: GraphQLBoolean,
@@ -85,8 +89,7 @@ const FIELD_TYPE_MAP = {
 
 const DEFAULT_CONFIG: Config = {
   init: [],
-  persistence: "none",
-  localStorageKey: "recordSet",
+  persistence: null,
 };
 
 class RecordSet extends EventTarget {
@@ -103,29 +106,17 @@ class RecordSet extends EventTarget {
       ...config,
     };
 
-    switch (this.config.persistence) {
-      case "none": {
-        this.records = this.config.init;
-        break;
+    this.records = this.config.init;
+
+    if (this.config.persistence) {
+      const loadedRecords = this.config.persistence.load();
+      if (loadedRecords !== null) {
+        this.records = loadedRecords;
       }
-      case "url": {
-        this.loadUrl();
-        this.addEventListener("change", this.updateUrl);
-        break;
-      }
-      case "localStorage": {
-        this.loadLocalStorage();
-        this.addEventListener("change", this.updateLocalStorage);
-        break;
-      }
-      default: {
-        throw Error(
-          `Unknown persistence type "${this.config.persistence}". Where you after "url" or "localStorage"?`,
-        );
-      }
+      this.addEventListener("change", this.updatePersistence);
     }
 
-    this.generateSchema(schema);
+    this.schema = this.generateSchema(schema);
   }
 
   public query(query: DocumentNode, variables = {}) {
@@ -138,26 +129,14 @@ class RecordSet extends EventTarget {
     return data;
   }
 
-  private loadUrl() {
-    // TODO: Load from the URL if there's anything there.
-    this.records = this.config.init;
+  private updatePersistence() {
+    if (this.config.persistence) {
+      this.config.persistence.save(this.records);
+    }
   }
 
-  private updateUrl() {
-    // TODO
-  }
-
-  private loadLocalStorage() {
-    // TODO: Load from local storage if there's anything there.
-    this.records = this.config.init;
-  }
-
-  private updateLocalStorage() {
-    // TODO
-  }
-
-  private generateSchema(schema: Schema) {
-    const dynamicTypes = {};
+  private generateSchema(schema: Schema): GraphQLSchema {
+    const dynamicTypes: { [key: string]: GraphQLObjectType } = {};
     const dynamicQueryFields: GraphQLFieldConfigMap<null, null> = {};
     const dynamicMutationFields: GraphQLFieldConfigMap<null, null> = {};
 
@@ -221,7 +200,7 @@ class RecordSet extends EventTarget {
                 result[field] = {
                   type: new GraphQLNonNull(new GraphQLList(NodeType)),
                   resolve: (obj) =>
-                    source.reduce((result, { type, field }) => {
+                    source.reduce<Array<Record>>((result, { type, field }) => {
                       const inverse = schema[type].fields[field];
                       if (inverse.type !== "ForeignKey") {
                         throw Error(`Expected ${type}#${field} to be a foreign key.`);
@@ -245,7 +224,8 @@ class RecordSet extends EventTarget {
                         }
                         case "oneToOne": {
                           const inverseRecord = resolveInverseOneToOne(this.records, field, obj.id);
-                          return result.find(({ id }) => id === inverseRecord.id)
+                          return inverseRecord === undefined ||
+                            result.find(({ id }) => id === inverseRecord.id)
                             ? result
                             : [...result, inverseRecord];
                         }
@@ -255,7 +235,8 @@ class RecordSet extends EventTarget {
                             field,
                             obj.id,
                           );
-                          return result.find(({ id }) => id === inverseRecord.id)
+                          return inverseRecord === undefined ||
+                            result.find(({ id }) => id === inverseRecord.id)
                             ? result
                             : [...result, inverseRecord];
                         }
@@ -393,7 +374,11 @@ class RecordSet extends EventTarget {
         },
         resolve: (_, { id, ...args }) => {
           const updatedRecord = this.records.find((record) => record.id === id);
-          for (let arg in args) updatedRecord[arg] = args[arg];
+          if (updatedRecord) {
+            for (let arg in args) {
+              updatedRecord[arg] = args[arg];
+            }
+          }
           this.dispatchEvent(new Event("change"));
           return updatedRecord;
         },
@@ -502,7 +487,7 @@ class RecordSet extends EventTarget {
               if (f.cardinality === "oneToOne") {
                 for (let record of this.records) {
                   if (record.type === sourceRecord.type && record[field] === target) {
-                    record[field] = undefined;
+                    delete record[field];
                   }
                 }
               }
@@ -541,7 +526,7 @@ class RecordSet extends EventTarget {
               const currentArray = Array.isArray(current) ? current : [];
               sourceRecord[field] = currentArray.filter((id) => id !== target);
             } else {
-              sourceRecord[field] = undefined;
+              delete sourceRecord[field];
             }
             this.dispatchEvent(new Event("change"));
             return sourceRecord;
@@ -551,12 +536,56 @@ class RecordSet extends EventTarget {
       },
     });
 
-    this.schema = new GraphQLSchema({
+    return new GraphQLSchema({
       query: QueryType,
       mutation: MutationType,
     });
   }
 }
+
+class LocalStoragePersistence implements Persistence {
+  private key: string;
+
+  constructor(key: string = "recordSet") {
+    this.key = key;
+  }
+
+  load(): Array<Record> | null {
+    const value = window.localStorage.getItem(this.key);
+    return value ? JSON.parse(value) : null;
+  }
+
+  save(records: Array<Record>): void {
+    window.localStorage.setItem(this.key, JSON.stringify(records));
+  }
+}
+
+class UrlPersistence implements Persistence {
+  load(): Array<Record> | null {
+    let persistedRecords = null;
+    const hash = window.location.hash.slice(1).trim();
+
+    if (hash.length > 0) {
+      try {
+        persistedRecords = JSON.parse(fromBase64(hash)) as unknown;
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    return persistedRecords && isRecordSet(persistedRecords) ? persistedRecords : [];
+  }
+
+  save(records: Array<Record>): void {
+    history.replaceState(undefined, "", `#${toBase64(JSON.stringify(records), true)}`);
+  }
+}
+
+const isRecord = (value: any): value is Record =>
+  typeof value === "object" && typeof value.type === "string" && typeof value.id === "string";
+
+const isRecordSet = (value: any): value is Array<Record> =>
+  Array.isArray(value) && value.every((record) => isRecord(record));
 
 const resolveInverseManyToMany = (records: Array<Record>, field: string, id: string) =>
   records.filter((record) => {
@@ -576,11 +605,35 @@ const resolveInverseOneToMany = (records: Array<Record>, field: string, id: stri
     return Array.isArray(x) ? x.includes(id) : false;
   });
 
-const createRecordSet = (schema: Schema, config?: Partial<Config>) => {
-  const recordSet = new RecordSet(schema, config);
+const createRecordSet = (
+  schema: Schema,
+  config?: Partial<{
+    init: Array<Record>;
+    persistence: "url" | "localStorage";
+    localStorageKey: string;
+  }>,
+) => {
+  let persistence = null;
+
+  switch (config?.persistence) {
+    case "localStorage": {
+      persistence = new LocalStoragePersistence(config?.localStorageKey);
+      break;
+    }
+    case "url": {
+      persistence = new UrlPersistence();
+      break;
+    }
+  }
+
+  const recordSet = new RecordSet(schema, {
+    init: config?.init,
+    persistence,
+  });
+
   return {
     recordSet,
-    useRecordSet: (query, variables = {}) => {
+    useRecordSet: (query: DocumentNode, variables = {}) => {
       const [, setTick] = useState(0);
 
       useEffect(() => {
@@ -644,6 +697,8 @@ const InverseField = (
 
 export {
   RecordSet,
+  UrlPersistence,
+  LocalStoragePersistence,
   createRecordSet,
   StringField,
   NumberField,
