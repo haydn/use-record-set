@@ -1,6 +1,6 @@
 {
   "name": "use-record-set",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A React hook for quickly prototyping data models.",
   "repository": "github:haydn/use-record-set",
   "keywords": [
