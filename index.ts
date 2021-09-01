@@ -552,7 +552,7 @@ class LocalStoragePersistence implements Persistence {
   }
 
   load(): Array<Record> | null {
-    const value = window.localStorage.getItem(this.key);
+    const value = typeof window === "object" ? window.localStorage.getItem(this.key) : null;
     return value ? JSON.parse(value) : null;
   }
 
@@ -564,11 +564,11 @@ class LocalStoragePersistence implements Persistence {
 class UrlPersistence implements Persistence {
   load(): Array<Record> | null {
     let persistedRecords = null;
-    const hash = window.location.hash.slice(1).trim();
+    const hash = typeof window === "object" ? window.location.hash.slice(1).trim() : null;
 
-    if (hash.length > 0) {
+    if (hash && hash.length > 0) {
       try {
-        persistedRecords = JSON.parse(fromBase64(hash)) as unknown;
+        persistedRecords = JSON.parse(fromBase64(hash));
       } catch (error) {
         console.log(error);
       }
