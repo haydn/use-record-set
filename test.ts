@@ -17,6 +17,9 @@ import {
   createRecordSet,
 } from "./index.js";
 
+const nodeOnlyTest = typeof window === "object" ? test.skip : test;
+const browserOnlyTest = typeof window === "object" ? test : test.skip;
+
 const MINIMAL_SCHEMA: Schema = {
   Record: {
     meta: {
@@ -1723,7 +1726,7 @@ describe("RecordSet persistence", () => {
     ]);
   });
 
-  test("LocalStoragePersistence", () => {
+  browserOnlyTest("LocalStoragePersistence", () => {
     const getItemSpy = jest
       .spyOn(global.Storage.prototype, "getItem")
       .mockReturnValue(
@@ -1766,7 +1769,7 @@ describe("RecordSet persistence", () => {
     setItemSpy.mockRestore();
   });
 
-  test("UrlPersistence", () => {
+  browserOnlyTest("UrlPersistence", () => {
     history.replaceState(
       null,
       "",
@@ -2010,7 +2013,49 @@ describe("schema helpers", () => {
 });
 
 describe("useRecordSet", () => {
-  test("end to end", () => {
+  nodeOnlyTest("local storage persistence doesn't error in node", () => {
+    expect(() => {
+      createRecordSet(
+        {
+          Person: {
+            meta: {
+              singular: "person",
+              plural: "people",
+            },
+            fields: {
+              name: StringField(),
+            },
+          },
+        },
+        {
+          persistence: "localStorage",
+        },
+      );
+    }).not.toThrow();
+  });
+
+  nodeOnlyTest("url persistence works in node", () => {
+    expect(() => {
+      createRecordSet(
+        {
+          Person: {
+            meta: {
+              singular: "person",
+              plural: "people",
+            },
+            fields: {
+              name: StringField(),
+            },
+          },
+        },
+        {
+          persistence: "url",
+        },
+      );
+    }).not.toThrow();
+  });
+
+  browserOnlyTest("end to end", () => {
     const { useRecordSet, updateRecordSet } = createRecordSet(
       {
         Role: {
