@@ -25,7 +25,7 @@
     "release": "np --no-2fa",
     "test": "yarn test:prettier && yarn test:jest",
     "test:prettier": "prettier -c index.ts README.md test.ts",
-    "test:jest": "yarn build:test && yarn jest test.js",
+    "test:jest": "yarn build:test && yarn jest test.js --env=jsdom && yarn jest test.js --env=node",
     "version": "yarn build"
   },
   "files": [
@@ -76,8 +76,5 @@
     "tabWidth": 2,
     "trailingComma": "all",
     "useTabs": false
-  },
-  "jest": {
-    "testEnvironment": "jsdom"
   }
 }
