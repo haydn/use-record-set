@@ -38,6 +38,7 @@
     "README.md"
   ],
   "dependencies": {
+    "event-target-shim": "^6.0.2",
     "graphql": "^15.5.1",
     "js-base64": "^3.6.1",
     "uuid": "^8.3.2"

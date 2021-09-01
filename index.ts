@@ -16,6 +16,7 @@ import {
 import { useEffect, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { toBase64, fromBase64 } from "js-base64";
+import { EventTarget, Event } from "event-target-shim";
 
 export type Record = {
   type: string;
