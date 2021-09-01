@@ -114,7 +114,7 @@ class RecordSet extends EventTarget {
       if (loadedRecords !== null) {
         this.records = loadedRecords;
       }
-      this.addEventListener("change", this.updatePersistence);
+      this.dispatchEvent(new Event("change"));
     }
 
     this.schema = this.generateSchema(schema);
@@ -130,10 +130,11 @@ class RecordSet extends EventTarget {
     return data;
   }
 
-  private updatePersistence() {
+  private update() {
     if (this.config.persistence) {
       this.config.persistence.save(this.records);
     }
+    this.dispatchEvent(new Event("change"));
   }
 
   private generateSchema(schema: Schema): GraphQLSchema {
@@ -350,7 +351,7 @@ class RecordSet extends EventTarget {
             ...args,
           };
           this.records.push(createdRecord);
-          this.dispatchEvent(new Event("change"));
+          this.update();
           return createdRecord;
         },
       };
@@ -380,7 +381,7 @@ class RecordSet extends EventTarget {
               updatedRecord[arg] = args[arg];
             }
           }
-          this.dispatchEvent(new Event("change"));
+          this.update();
           return updatedRecord;
         },
       };
@@ -394,7 +395,7 @@ class RecordSet extends EventTarget {
         resolve: (_, { id }) => {
           const deletedRecord = this.records.find((record) => record.id === id);
           this.records = this.records.filter((record) => record.id !== id);
-          this.dispatchEvent(new Event("change"));
+          this.update();
           return deletedRecord;
         },
       };
@@ -494,7 +495,7 @@ class RecordSet extends EventTarget {
               }
               sourceRecord[field] = target;
             }
-            this.dispatchEvent(new Event("change"));
+            this.update();
             return sourceRecord;
           },
         },
@@ -529,7 +530,7 @@ class RecordSet extends EventTarget {
             } else {
               delete sourceRecord[field];
             }
-            this.dispatchEvent(new Event("change"));
+            this.update();
             return sourceRecord;
           },
         },
