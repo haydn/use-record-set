@@ -395,6 +395,7 @@ class RecordSet extends EventTarget {
         resolve: (_, { id }) => {
           const deletedRecord = this.records.find((record) => record.id === id);
           this.records = this.records.filter((record) => record.id !== id);
+          // TODO: Clean-up any foreign keys that were pointing to this record.
           this.update();
           return deletedRecord;
         },
