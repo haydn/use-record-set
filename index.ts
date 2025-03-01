@@ -11,7 +11,8 @@ import {
   GraphQLObjectType,
   GraphQLSchema,
   GraphQLString,
-  execute,
+  GraphQLTypeResolver,
+  executeSync,
 } from "graphql";
 import { useEffect, useState } from "react";
 import { v4 as uuid } from "uuid";
@@ -121,7 +122,11 @@ class RecordSet extends EventTarget {
   }
 
   public query(query: DocumentNode, variables = {}) {
-    const { data, errors } = execute(this.schema, query, null, null, variables) as ExecutionResult;
+    const { data, errors } = executeSync({
+      schema: this.schema,
+      document: query,
+      variableValues: variables,
+    });
     if (Array.isArray(errors)) {
       for (let error of errors) {
         console.log(error);
@@ -147,7 +152,7 @@ class RecordSet extends EventTarget {
       fields: {
         id: { type: new GraphQLNonNull(GraphQLString) },
       },
-      resolveType: (value) => dynamicTypes[value.type],
+      resolveType: (value) => dynamicTypes[value.type].name,
     });
 
     const RelationshipType = new GraphQLObjectType({

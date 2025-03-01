@@ -1,18 +1,18 @@
-import { printSchema, execute } from "graphql";
-import gql from "graphql-tag";
+import { act, renderHook } from "@testing-library/react";
 import dedent from "dedent";
-import { toBase64, fromBase64 } from "js-base64";
-import { renderHook, act } from "@testing-library/react-hooks/dom/pure";
+import { execute, printSchema } from "graphql";
+import gql from "graphql-tag";
+import { fromBase64, toBase64 } from "js-base64";
 import {
-  Schema,
-  RecordSet,
-  StringField,
-  NumberField,
   BooleanField,
   DateField,
   ForeignKeyField,
   InverseField,
   LocalStoragePersistence,
+  NumberField,
+  RecordSet,
+  Schema,
+  StringField,
   UrlPersistence,
   createRecordSet,
 } from "./index.js";
@@ -573,14 +573,14 @@ describe("RecordSet query resolution", () => {
     const recordSet = new RecordSet({});
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             relationships(foreignKeys: [])
           }
         `,
-      ),
+      }),
     ).toEqual({ data: { relationships: [] } });
   });
 
@@ -595,16 +595,16 @@ describe("RecordSet query resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             record(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         record: {
@@ -625,16 +625,16 @@ describe("RecordSet query resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             records(ids: ["267d5cb0-90aa-471c-b5fc-3b31afd73184"]) {
               id
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         records: [
@@ -657,16 +657,16 @@ describe("RecordSet query resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             records {
               id
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         records: [
@@ -693,9 +693,9 @@ describe("RecordSet query resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             record(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
@@ -708,7 +708,7 @@ describe("RecordSet query resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         record: {
@@ -737,9 +737,9 @@ describe("RecordSet query resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             record(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
@@ -758,7 +758,7 @@ describe("RecordSet query resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         record: {
@@ -793,9 +793,9 @@ describe("RecordSet query resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             record(id: "71dddd29-680d-4dbd-92ed-2ea085a569cb") {
               id
@@ -817,7 +817,7 @@ describe("RecordSet query resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         record: {
@@ -863,9 +863,9 @@ describe("RecordSet query resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             role(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
@@ -906,7 +906,7 @@ describe("RecordSet query resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         role: {
@@ -954,55 +954,55 @@ describe("RecordSet mutation resolution", () => {
     const recordSet = new RecordSet(MINIMAL_SCHEMA);
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             createRecord(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
             }
           }
         `,
-      ),
+      }),
     ).toEqual({ data: { createRecord: { id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" } } });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             record(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
             }
           }
         `,
-      ),
+      }),
     ).toEqual({ data: { record: { id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" } } });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             deleteRecord(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
             }
           }
         `,
-      ),
+      }),
     ).toEqual({ data: { deleteRecord: { id: "267d5cb0-90aa-471c-b5fc-3b31afd73184" } } });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             record(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
             }
           }
         `,
-      ),
+      }),
     ).toEqual({ data: { record: null } });
   });
 
@@ -1021,9 +1021,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             updateRecord(
               id: "267d5cb0-90aa-471c-b5fc-3b31afd73184"
@@ -1042,7 +1042,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         updateRecord: {
@@ -1056,9 +1056,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             record(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
@@ -1071,7 +1071,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         record: {
@@ -1116,9 +1116,9 @@ describe("RecordSet mutation resolution", () => {
     recordSet.addEventListener("change", mockHandler);
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             addRelationship(
               field: "lineManager"
@@ -1134,7 +1134,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         addRelationship: {
@@ -1147,9 +1147,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             addRelationship(
               field: "responsibilities"
@@ -1165,7 +1165,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         addRelationship: {
@@ -1180,9 +1180,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             addRelationship(
               field: "holder"
@@ -1198,7 +1198,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         addRelationship: {
@@ -1211,9 +1211,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             addRelationship(
               field: "teams"
@@ -1229,7 +1229,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         addRelationship: {
@@ -1244,9 +1244,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             role(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
@@ -1267,7 +1267,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         role: {
@@ -1323,9 +1323,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             addRelationship(
               field: "holder"
@@ -1341,7 +1341,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         addRelationship: {
@@ -1354,9 +1354,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             addRelationship(
               field: "responsibilities"
@@ -1372,7 +1372,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         addRelationship: {
@@ -1387,9 +1387,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             role(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
@@ -1404,7 +1404,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         role: {
@@ -1451,9 +1451,9 @@ describe("RecordSet mutation resolution", () => {
     recordSet.addEventListener("change", mockHandler);
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             removeRelationship(
               field: "lineManager"
@@ -1469,7 +1469,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         removeRelationship: {
@@ -1480,9 +1480,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             removeRelationship(
               field: "responsibilities"
@@ -1498,7 +1498,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         removeRelationship: {
@@ -1509,9 +1509,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             removeRelationship(
               field: "holder"
@@ -1527,7 +1527,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         removeRelationship: {
@@ -1538,9 +1538,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           mutation {
             removeRelationship(
               field: "teams"
@@ -1556,7 +1556,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         removeRelationship: {
@@ -1567,9 +1567,9 @@ describe("RecordSet mutation resolution", () => {
     });
 
     expect(
-      execute(
-        recordSet.schema,
-        gql`
+      execute({
+        schema: recordSet.schema,
+        document: gql`
           query {
             role(id: "267d5cb0-90aa-471c-b5fc-3b31afd73184") {
               id
@@ -1590,7 +1590,7 @@ describe("RecordSet mutation resolution", () => {
             }
           }
         `,
-      ),
+      }),
     ).toEqual({
       data: {
         role: {
