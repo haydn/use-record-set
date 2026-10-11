@@ -155,8 +155,28 @@ export default schema;
 
 Then use the `use-record-set` command to print the GraphQL schema:
 
+Bun:
+
 ```shell
-npx use-record-set print-schema src/schema.ts -o schema.graphql
+bunx use-record-set print-schema src/schema.ts -o schema.gen.graphql
+```
+
+pnpm:
+
+```shell
+pnpm exec use-record-set print-schema src/schema.ts -o schema.gen.graphql
+```
+
+Yarn:
+
+```shell
+yarn use-record-set print-schema src/schema.ts -o schema.gen.graphql
+```
+
+npm:
+
+```shell
+npx use-record-set print-schema src/schema.ts -o schema.gen.graphql
 ```
 
 Options:
@@ -165,7 +185,12 @@ Options:
 - `-e, --export <name>`: Use a named export instead of the default export.
 - `-w, --watch`: Regenerate the schema whenever the schema file changes (requires `--output`).
 
-The schema module is loaded with Node, so it shouldn't import anything that can't run outside the browser (React components, CSS, etc.). TypeScript files are supported natively by Node 22.18+, as long as types are imported with `import type` and no TypeScript-only syntax (e.g. enums) is used. Otherwise, run the command with a loader like [tsx](https://tsx.is): `npx tsx node_modules/.bin/use-record-set …`.
+The schema module is loaded with Node, so it shouldn't import anything that can't run outside the browser (React components, CSS, etc.). TypeScript files are supported natively by Node 22.18+, as long as types are imported with `import type` and no TypeScript-only syntax (e.g. enums) is used. Otherwise, run the command with a loader like [tsx](https://tsx.is):
+
+- Bun: `bunx tsx node_modules/.bin/use-record-set …`
+- pnpm: `pnpm dlx tsx node_modules/.bin/use-record-set …`
+- Yarn: `yarn dlx tsx node_modules/.bin/use-record-set …`
+- npm: `npx tsx node_modules/.bin/use-record-set …`
 
 The schema can also be printed programmatically:
 
