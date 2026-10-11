@@ -12,7 +12,6 @@
   "description": "A React hook for quickly prototyping data models.",
   "devDependencies": {
     "@testing-library/react": "^16.2.0",
-    "@types/dedent": "^0.7.2",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.7",
     "@types/react": "^19.0.10",
