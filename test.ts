@@ -1864,6 +1864,11 @@ describe("schema helpers", () => {
       type: "ForeignKey",
       cardinality: "manyToMany",
     });
+    expect(ForeignKeyField("manyToOne", "Person")).toEqual({
+      type: "ForeignKey",
+      cardinality: "manyToOne",
+      target: "Person",
+    });
   });
 
   test("DateField", () => {
@@ -2149,6 +2154,128 @@ describe("useRecordSet", () => {
         rank: 1,
       },
     ]);
+  });
+});
+
+describe("foreign key targets", () => {
+  const TARGETS_SCHEMA: Schema = {
+    Group: {
+      meta: {
+        singular: "group",
+        plural: "groups",
+      },
+      fields: {
+        name: StringField(),
+        owner: ForeignKeyField("manyToOne", "Person"),
+        members: ForeignKeyField("manyToMany", "Person"),
+      },
+    },
+    Person: {
+      meta: {
+        singular: "person",
+        plural: "people",
+      },
+      fields: {
+        name: StringField(),
+      },
+    },
+  };
+
+  const init = () => [
+    {
+      type: "Group",
+      id: "3d6ff8ff-d23e-4421-bfe1-b2fabd1ccb8c",
+      name: "Group A",
+      owner: "7de3a1cf-5f26-4c56-b453-5dd2a33697fc",
+      members: [
+        "7de3a1cf-5f26-4c56-b453-5dd2a33697fc",
+        "3d6ff8ff-d23e-4421-bfe1-b2fabd1ccb8c",
+        "a5e1b0a4-9a5b-4f3e-9d7e-3c1f0b0f4a77",
+      ],
+    },
+    {
+      type: "Person",
+      id: "7de3a1cf-5f26-4c56-b453-5dd2a33697fc",
+      name: "Person A",
+    },
+  ];
+
+  test("schema generation", () => {
+    expect(printRecordSetSchema(TARGETS_SCHEMA)).toContain(
+      dedent`
+        type Group implements Node {
+          id: String!
+          name: String
+          owner: Person
+          members: [Person!]!
+        }
+      `,
+    );
+  });
+
+  test("unknown target", () => {
+    expect(() => {
+      printRecordSetSchema({
+        Group: {
+          meta: {
+            singular: "group",
+            plural: "groups",
+          },
+          fields: {
+            owner: ForeignKeyField("manyToOne", "Person"),
+          },
+        },
+      });
+    }).toThrow("Expected the target of Group#owner (Person) to be in the schema.");
+  });
+
+  test("query resolution skips records of other types and missing records", () => {
+    const recordSet = new RecordSet(TARGETS_SCHEMA, { init: init() });
+
+    expect(
+      recordSet.query(gql`
+        query {
+          group(id: "3d6ff8ff-d23e-4421-bfe1-b2fabd1ccb8c") {
+            owner {
+              name
+            }
+            members {
+              name
+            }
+          }
+        }
+      `),
+    ).toEqual({
+      group: {
+        owner: { name: "Person A" },
+        members: [{ name: "Person A" }],
+      },
+    });
+  });
+
+  test("addRelationship rejects records of other types", () => {
+    const consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    const recordSet = new RecordSet(TARGETS_SCHEMA, { init: init() });
+
+    expect(
+      recordSet.query(gql`
+        mutation {
+          addRelationship(
+            field: "owner"
+            source: "3d6ff8ff-d23e-4421-bfe1-b2fabd1ccb8c"
+            target: "3d6ff8ff-d23e-4421-bfe1-b2fabd1ccb8c"
+          ) {
+            id
+          }
+        }
+      `),
+    ).toEqual({ addRelationship: null });
+
+    expect(consoleLogSpy.mock.calls[0][0].message).toBe(
+      "Unable to add relationship: 3d6ff8ff-d23e-4421-bfe1-b2fabd1ccb8c is not a Person.",
+    );
+
+    consoleLogSpy.mockRestore();
   });
 });
 

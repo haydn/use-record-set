@@ -65,6 +65,7 @@ export type SchemaField =
   | {
       type: "ForeignKey";
       cardinality: "oneToOne" | "oneToMany" | "manyToMany" | "manyToOne";
+      target?: string;
     }
   | {
       type: "Inverse";
@@ -197,24 +198,34 @@ class RecordSet extends EventTarget {
           const f = schema[type].fields[field];
           switch (f.type) {
             case "ForeignKey": {
+              const target = f.target;
+              if (target !== undefined && !Object.prototype.hasOwnProperty.call(schema, target)) {
+                throw Error(
+                  `Expected the target of ${type}#${field} (${target}) to be in the schema.`,
+                );
+              }
+              // Records of the wrong type are skipped so they can't masquerade as the target type.
+              const find = (id: unknown) =>
+                this.records.find(
+                  (r) => r.id === id && (target === undefined || r.type === target),
+                );
+              const nodeType = target === undefined ? NodeType : dynamicTypes[target];
               if (f.cardinality === "manyToMany" || f.cardinality === "oneToMany") {
                 result[field] = {
-                  type: listOf(NodeType),
+                  type: listOf(nodeType),
                   resolve: (record: Record) => {
                     const source = record[field];
                     // Dangling IDs (e.g. left behind by a delete) are skipped because list items
                     // are non-null.
                     return Array.isArray(source)
-                      ? source
-                          .map((id) => this.records.find((r) => r.id === id))
-                          .filter((r): r is Record => r !== undefined)
+                      ? source.map(find).filter((r): r is Record => r !== undefined)
                       : [];
                   },
                 };
               } else {
                 result[field] = {
-                  type: NodeType,
-                  resolve: (record: Record) => this.records.find((r) => r.id === record[field]),
+                  type: nodeType,
+                  resolve: (record: Record) => find(record[field]),
                 };
               }
               break;
@@ -493,6 +504,12 @@ class RecordSet extends EventTarget {
                 `Unable to add relationship: ${field} on ${sourceRecord.type} in not a foreign key.`,
               );
             }
+            if (
+              f.target !== undefined &&
+              !this.records.find(({ id, type }) => id === target && type === f.target)
+            ) {
+              throw Error(`Unable to add relationship: ${target} is not a ${f.target}.`);
+            }
             if (f.cardinality === "manyToMany" || f.cardinality === "oneToMany") {
               if (f.cardinality === "oneToMany") {
                 for (let record of this.records) {
@@ -696,10 +713,15 @@ const DateField = (): { type: "Date" } => ({ type: "Date" });
 
 const ForeignKeyField = (
   cardinality: "oneToOne" | "oneToMany" | "manyToMany" | "manyToOne",
-): { type: "ForeignKey"; cardinality: "oneToOne" | "oneToMany" | "manyToMany" | "manyToOne" } => ({
-  type: "ForeignKey",
-  cardinality,
-});
+  target?: string,
+): {
+  type: "ForeignKey";
+  cardinality: "oneToOne" | "oneToMany" | "manyToMany" | "manyToOne";
+  target?: string;
+} =>
+  target === undefined
+    ? { type: "ForeignKey", cardinality }
+    : { type: "ForeignKey", cardinality, target };
 
 const InverseField = (
   source: String | Array<String>,

@@ -61,7 +61,7 @@ const schema = {
     },
     fields: {
       name: StringField(),
-      members: ForeignKeyField("manyToMany"),
+      members: ForeignKeyField("manyToMany", "Person"),
     },
   },
   Person: {
@@ -101,14 +101,12 @@ const MyComponent = () => {
             id
             name
             members {
-              ... on Person {
-                id
-                name
-                groups {
-                  ... on Group {
-                    id
-                    name
-                  }
+              id
+              name
+              groups {
+                ... on Group {
+                  id
+                  name
                 }
               }
             }
@@ -136,6 +134,14 @@ const MyComponent = () => {
 ```
 
 ## Relationships
+
+Foreign keys and inverse fields are typed as the `Node` interface in the GraphQL schema, so selecting fields other than `id` requires an inline fragment (`... on Person`). Passing the target type as the second argument to `ForeignKeyField` types the field as that type instead, so the fragment isn't needed:
+
+```js
+members: ForeignKeyField("manyToMany", "Person"),
+```
+
+Only records of the target type are returned for the field, and `addRelationship` will throw if the target record isn't of that type.
 
 Relationship lists are never `null` and never contain `null` (`[Node!]!`). IDs that don't resolve to a record (e.g. one that has been deleted) are left out.
 
@@ -233,9 +239,7 @@ const GroupQuery = graphql(`
       name
       members {
         id
-        ... on Person {
-          name
-        }
+        name
       }
     }
   }
@@ -279,9 +283,7 @@ const GroupQuery = graphql(`
       name
       members {
         id
-        ... on Person {
-          name
-        }
+        name
       }
     }
   }
