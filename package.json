@@ -1,56 +1,15 @@
 {
-  "name": "use-record-set",
-  "version": "0.3.0",
-  "description": "A React hook for quickly prototyping data models.",
-  "repository": "github:haydn/use-record-set",
-  "keywords": [
-    "GraphQL",
-    "prototyping",
-    "data"
-  ],
-  "main": "cjs/index.js",
+  "author": "Haydn Ewers",
   "bin": {
     "use-record-set": "cjs/cli.js"
   },
-  "author": "Haydn Ewers",
-  "license": "MIT",
-  "private": false,
-  "packageManager": "bun@1.4.2",
-  "engines": {
-    "node": ">=14"
-  },
-  "scripts": {
-    "build": "bun run build:declaration && bun run build:cjs && bun run build:umd && bun run build:esm",
-    "build:declaration": "tsc index.ts --declaration --emitDeclarationOnly && flowgen index.d.ts -o index.js.flow",
-    "build:cjs": "tsc index.ts cli.ts --target ES2015 --module CommonJS --outDir cjs",
-    "build:umd": "tsc index.ts --target ES2015 --module UMD --moduleResolution node --outDir umd",
-    "build:esm": "tsc index.ts --target ESNext --module ESNext --moduleResolution node --outDir esm",
-    "build:test": "tsc test.ts cli.ts --target ES2015 --module CommonJS --esModuleInterop",
-    "release": "np --no-2fa",
-    "test": "bun run test:prettier && bun run test:jest",
-    "test:prettier": "prettier -c index.ts cli.ts README.md test.ts",
-    "test:jest": "bun run build:test && jest test.js --env=jsdom && jest test.js --env=node",
-    "version": "bun run build"
-  },
-  "files": [
-    "index.d.ts",
-    "index.js.flow",
-    "cjs/index.js",
-    "cjs/cli.js",
-    "umd/index.js",
-    "esm/index.js",
-    "LICENSE",
-    "README.md"
-  ],
   "dependencies": {
     "event-target-shim": "^6.0.2",
     "graphql": "^16.10.0",
     "js-base64": "^3.7.7",
     "uuid": "^11.1.0"
   },
-  "peerDependencies": {
-    "react": "^19.0.0"
-  },
+  "description": "A React hook for quickly prototyping data models.",
   "devDependencies": {
     "@testing-library/react": "^16.2.0",
     "@types/dedent": "^0.7.2",
@@ -70,6 +29,31 @@
     "react-dom": "^19.0.0",
     "typescript": "^5.8.2"
   },
+  "engines": {
+    "node": ">=14"
+  },
+  "files": [
+    "index.d.ts",
+    "index.js.flow",
+    "cjs/index.js",
+    "cjs/cli.js",
+    "umd/index.js",
+    "esm/index.js",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "GraphQL",
+    "prototyping",
+    "data"
+  ],
+  "license": "MIT",
+  "main": "cjs/index.js",
+  "name": "use-record-set",
+  "packageManager": "bun@1.4.2",
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
   "prettier": {
     "arrowParens": "always",
     "bracketSpacing": true,
@@ -83,5 +67,21 @@
     "tabWidth": 2,
     "trailingComma": "all",
     "useTabs": false
-  }
+  },
+  "private": false,
+  "repository": "github:haydn/use-record-set",
+  "scripts": {
+    "build": "bun run build:declaration && bun run build:cjs && bun run build:umd && bun run build:esm",
+    "build:cjs": "tsc index.ts cli.ts --target ES2015 --module CommonJS --outDir cjs",
+    "build:declaration": "tsc index.ts --declaration --emitDeclarationOnly && flowgen index.d.ts -o index.js.flow",
+    "build:esm": "tsc index.ts --target ESNext --module ESNext --moduleResolution node --outDir esm",
+    "build:test": "tsc test.ts cli.ts --target ES2015 --module CommonJS --esModuleInterop",
+    "build:umd": "tsc index.ts --target ES2015 --module UMD --moduleResolution node --outDir umd",
+    "release": "np --no-2fa",
+    "test": "bun run test:prettier && bun run test:jest",
+    "test:jest": "bun run build:test && jest test.js --env=jsdom && jest test.js --env=node",
+    "test:prettier": "prettier -c index.ts cli.ts README.md test.ts",
+    "version": "bun run build"
+  },
+  "version": "0.3.0"
 }
