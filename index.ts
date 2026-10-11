@@ -1,6 +1,6 @@
+import { Event, EventTarget } from "event-target-shim";
 import {
   DocumentNode,
-  ExecutionResult,
   GraphQLBoolean,
   GraphQLFieldConfigMap,
   GraphQLFloat,
@@ -11,14 +11,12 @@ import {
   GraphQLObjectType,
   GraphQLSchema,
   GraphQLString,
-  GraphQLTypeResolver,
   executeSync,
   printSchema,
 } from "graphql";
+import { fromBase64, toBase64 } from "js-base64";
 import { useEffect, useState } from "react";
 import { v4 as uuid } from "uuid";
-import { toBase64, fromBase64 } from "js-base64";
-import { EventTarget, Event } from "event-target-shim";
 
 export type Record = {
   type: string;
@@ -707,15 +705,15 @@ const InverseField = (
 };
 
 export {
-  RecordSet,
-  UrlPersistence,
-  LocalStoragePersistence,
-  createRecordSet,
-  printRecordSetSchema,
-  StringField,
-  NumberField,
   BooleanField,
   DateField,
   ForeignKeyField,
   InverseField,
+  LocalStoragePersistence,
+  NumberField,
+  RecordSet,
+  StringField,
+  UrlPersistence,
+  createRecordSet,
+  printRecordSetSchema,
 };
