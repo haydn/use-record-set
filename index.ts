@@ -166,6 +166,9 @@ class RecordSet extends EventTarget {
       resolveType: (value) => dynamicTypes[value.type].name,
     });
 
+    const listOf = (type: GraphQLInterfaceType | GraphQLObjectType) =>
+      new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(type)));
+
     const RelationshipType = new GraphQLObjectType({
       name: "Relationship",
       fields: {
@@ -196,11 +199,15 @@ class RecordSet extends EventTarget {
             case "ForeignKey": {
               if (f.cardinality === "manyToMany" || f.cardinality === "oneToMany") {
                 result[field] = {
-                  type: new GraphQLNonNull(new GraphQLList(NodeType)),
+                  type: listOf(NodeType),
                   resolve: (record: Record) => {
                     const source = record[field];
+                    // Dangling IDs (e.g. left behind by a delete) are skipped because list items
+                    // are non-null.
                     return Array.isArray(source)
-                      ? source.map((id) => this.records.find((r) => r.id === id))
+                      ? source
+                          .map((id) => this.records.find((r) => r.id === id))
+                          .filter((r): r is Record => r !== undefined)
                       : [];
                   },
                 };
@@ -216,7 +223,7 @@ class RecordSet extends EventTarget {
               const source = f.source;
               if (Array.isArray(source)) {
                 result[field] = {
-                  type: new GraphQLNonNull(new GraphQLList(NodeType)),
+                  type: listOf(NodeType),
                   resolve: (obj) =>
                     source.reduce<Array<Record>>((result, { type, field }) => {
                       const inverse = schema[type].fields[field];
@@ -269,7 +276,7 @@ class RecordSet extends EventTarget {
                 switch (inverse.cardinality) {
                   case "manyToMany": {
                     result[field] = {
-                      type: new GraphQLNonNull(new GraphQLList(NodeType)),
+                      type: listOf(NodeType),
                       resolve: (obj) =>
                         resolveInverseManyToMany(this.records, source.field, obj.id),
                     };
@@ -277,7 +284,7 @@ class RecordSet extends EventTarget {
                   }
                   case "manyToOne": {
                     result[field] = {
-                      type: new GraphQLNonNull(new GraphQLList(NodeType)),
+                      type: listOf(NodeType),
                       resolve: (obj) => resolveInverseManyToOne(this.records, source.field, obj.id),
                     };
                     break;

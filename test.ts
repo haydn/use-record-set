@@ -454,10 +454,10 @@ describe("RecordSet schema generation", () => {
 
         type Record implements Node {
           id: String!
-          manyToMany: [Node]!
+          manyToMany: [Node!]!
           manyToOne: Node
           oneToOne: Node
-          oneToMany: [Node]!
+          oneToMany: [Node!]!
         }
 
         type RootMutationType {
@@ -502,15 +502,15 @@ describe("RecordSet schema generation", () => {
 
         type Record implements Node {
           id: String!
-          manyToMany: [Node]!
+          manyToMany: [Node!]!
           manyToOne: Node
           oneToOne: Node
-          oneToMany: [Node]!
-          inverseManyToMany: [Node]!
-          inverseManyToOne: [Node]!
+          oneToMany: [Node!]!
+          inverseManyToMany: [Node!]!
+          inverseManyToOne: [Node!]!
           inverseOneToOne: Node
           inverseOneToMany: Node
-          inverseMultiple: [Node]!
+          inverseMultiple: [Node!]!
         }
 
         type RootMutationType {
@@ -1976,10 +1976,10 @@ describe("schema helpers", () => {
           isArchived: Boolean
           dateCreated: String
           lineManager: Node
-          responsibilities: [Node]!
+          responsibilities: [Node!]!
           holder: Node
-          teams: [Node]!
-          reports: [Node]!
+          teams: [Node!]!
+          reports: [Node!]!
         }
 
         type Responsibility implements Node {
@@ -1994,7 +1994,7 @@ describe("schema helpers", () => {
 
         type Team implements Node {
           id: String!
-          members: [Node]!
+          members: [Node!]!
         }
 
         type RootMutationType {

@@ -135,6 +135,10 @@ const MyComponent = () => {
 };
 ```
 
+## Relationships
+
+Relationship lists are never `null` and never contain `null` (`[Node!]!`). IDs that don't resolve to a record (e.g. one that has been deleted) are left out.
+
 ## Generating a GraphQL schema file
 
 A GraphQL schema file lets editor tooling autocomplete and validate your queries, and tools like [GraphQL Code Generator](https://the-guild.dev/graphql/codegen) generate types for them.
