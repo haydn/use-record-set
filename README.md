@@ -22,6 +22,18 @@ Demo: https://09qzj.csb.app/
 
 ## Installation
 
+Bun:
+
+```shell
+bun add use-record-set graphql-tag
+```
+
+pnpm:
+
+```shell
+pnpm add use-record-set graphql-tag
+```
+
 Yarn:
 
 ```shell
