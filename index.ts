@@ -18,6 +18,15 @@ import { fromBase64, toBase64 } from "js-base64";
 import { useEffect, useState } from "react";
 import { v4 as uuid } from "uuid";
 
+// Structurally compatible with `TypedDocumentNode` from `@graphql-typed-document-node/core`, which
+// is what GraphQL Code Generator (and most GraphQL clients) use for typed documents.
+export interface TypedDocumentNode<
+  TResult = { [key: string]: any },
+  TVariables = { [key: string]: any },
+> extends DocumentNode {
+  __apiType?: (variables: TVariables) => TResult;
+}
+
 export type Record = {
   type: string;
   id: string;
@@ -120,18 +129,21 @@ class RecordSet extends EventTarget {
     this.schema = this.generateSchema(schema);
   }
 
-  public query(query: DocumentNode, variables = {}) {
+  public query<TResult = { [key: string]: any }, TVariables = { [key: string]: any }>(
+    query: TypedDocumentNode<TResult, TVariables>,
+    variables?: TVariables,
+  ): TResult {
     const { data, errors } = executeSync({
       schema: this.schema,
       document: query,
-      variableValues: variables,
+      variableValues: variables || {},
     });
     if (Array.isArray(errors)) {
       for (let error of errors) {
         console.log(error);
       }
     }
-    return data;
+    return data as TResult;
   }
 
   private update() {
@@ -640,7 +652,10 @@ const createRecordSet = (
 
   return {
     recordSet,
-    useRecordSet: (query: DocumentNode, variables = {}) => {
+    useRecordSet: <TResult = { [key: string]: any }, TVariables = { [key: string]: any }>(
+      query: TypedDocumentNode<TResult, TVariables>,
+      variables?: TVariables,
+    ): TResult => {
       const [, setTick] = useState(0);
 
       useEffect(() => {
@@ -655,7 +670,10 @@ const createRecordSet = (
 
       return recordSet.query(query, variables);
     },
-    updateRecordSet: (query: DocumentNode, variables = {}) => recordSet.query(query, variables),
+    updateRecordSet: <TResult = { [key: string]: any }, TVariables = { [key: string]: any }>(
+      query: TypedDocumentNode<TResult, TVariables>,
+      variables?: TVariables,
+    ): TResult => recordSet.query(query, variables),
   };
 };
 

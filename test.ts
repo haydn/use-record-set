@@ -17,6 +17,7 @@ import {
   RecordSet,
   Schema,
   StringField,
+  TypedDocumentNode,
   UrlPersistence,
   createRecordSet,
   printRecordSetSchema,
@@ -2148,6 +2149,50 @@ describe("useRecordSet", () => {
         rank: 1,
       },
     ]);
+  });
+});
+
+describe("typed documents", () => {
+  type ThingQuery = { thing: { name: string | null } | null };
+  type ThingQueryVariables = { id: string };
+
+  const recordSet = new RecordSet(
+    {
+      Thing: {
+        meta: {
+          singular: "thing",
+          plural: "things",
+        },
+        fields: {
+          name: StringField(),
+        },
+      },
+    },
+    {
+      init: [{ type: "Thing", id: "3a3b76bc-5146-4ed2-a00c-3b11003f4f1b", name: "Example thing" }],
+    },
+  );
+
+  const ThingDocument = gql`
+    query ($id: String!) {
+      thing(id: $id) {
+        name
+      }
+    }
+  ` as TypedDocumentNode<ThingQuery, ThingQueryVariables>;
+
+  test("result and variable types are inferred from the document", () => {
+    const result = recordSet.query(ThingDocument, { id: "3a3b76bc-5146-4ed2-a00c-3b11003f4f1b" });
+    const name: string | null | undefined = result.thing?.name;
+    expect(name).toBe("Example thing");
+
+    // These are checked when the tests are compiled.
+    () => {
+      // @ts-expect-error
+      recordSet.query(ThingDocument, { id: 1 });
+      // @ts-expect-error
+      recordSet.query(ThingDocument).nope;
+    };
   });
 });
 

@@ -192,7 +192,108 @@ The schema module is loaded with Node, so it shouldn't import anything that can'
 - Yarn: `yarn dlx tsx node_modules/.bin/use-record-set …`
 - npm: `npx tsx node_modules/.bin/use-record-set …`
 
-The schema can also be printed programmatically:
+## Typed queries
+
+`useRecordSet` and `updateRecordSet` accept a [`TypedDocumentNode`](https://github.com/dotansimha/graphql-typed-document-node), inferring the result and variable types from it. Any tool that produces typed documents from the generated schema file will work.
+
+Untyped documents (e.g. from `graphql-tag`) still work, returning `{ [key: string]: any }`.
+
+### GraphQL Code Generator
+
+Using the [client preset](https://the-guild.dev/graphql/codegen/plugins/presets/preset-client):
+
+```ts
+// codegen.ts
+import type { CodegenConfig } from "@graphql-codegen/cli";
+
+const config: CodegenConfig = {
+  schema: "schema.gen.graphql",
+  documents: ["src/**/*.tsx"],
+  generates: {
+    "src/gql/": {
+      preset: "client",
+    },
+  },
+};
+
+export default config;
+```
+
+```tsx
+import { graphql } from "./gql";
+
+const GroupQuery = graphql(`
+  query Group($id: String!) {
+    group(id: $id) {
+      id
+      name
+      members {
+        id
+        ... on Person {
+          name
+        }
+      }
+    }
+  }
+`);
+
+const MyComponent = ({ id }: { id: string }) => {
+  // `group` is typed, and `id` is checked against the query's variables.
+  const { group } = useRecordSet(GroupQuery, { id });
+  // …
+};
+```
+
+### gql.tada
+
+Point the [gql.tada](https://gql-tada.0no.co) TypeScript plugin at the generated schema file:
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "gql.tada/ts-plugin",
+        "schema": "./schema.gen.graphql",
+        "tadaOutputLocation": "./src/graphql-env.d.ts"
+      }
+    ]
+  }
+}
+```
+
+The plugin writes `graphql-env.d.ts` when the schema file changes in your editor. To write it from the command line (e.g. in CI), run `gql.tada generate output`.
+
+```tsx
+import { graphql } from "gql.tada";
+
+const GroupQuery = graphql(`
+  query Group($id: String!) {
+    group(id: $id) {
+      id
+      name
+      members {
+        id
+        ... on Person {
+          name
+        }
+      }
+    }
+  }
+`);
+
+const MyComponent = ({ id }: { id: string }) => {
+  const { group } = useRecordSet(GroupQuery, { id });
+  // …
+};
+```
+
+gql.tada masks fragments by default, so fields selected with a fragment spread need to be read with [`readFragment`](https://gql-tada.0no.co/guides/fragment-colocation).
+
+## Printing the schema programmatically
+
+The GraphQL schema can also be printed from code:
 
 ```js
 import { printRecordSetSchema } from "use-record-set";
