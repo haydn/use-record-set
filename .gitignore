@@ -1,5 +1,6 @@
 /.vscode
 /cjs
+/cli.js
 /esm
 /index.d.ts
 /index.js

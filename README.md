@@ -14,6 +14,7 @@
 - More powerful than local state, less complex than a full data layer.
 - Support for modeling one-to-one, one-to-many, many-to-many and many-to-one relationships.
 - Synchronous GraphQL queries and mutations to access and update data.
+- Generate a GraphQL schema file for editor tooling and code generation.
 - Flow and TypeScript declarations included.
 - CommonJS, UMD and ESM modules provided.
 
@@ -120,4 +121,44 @@ const MyComponent = () => {
     </ul>
   );
 };
+```
+
+## Generating a GraphQL schema file
+
+A GraphQL schema file lets editor tooling autocomplete and validate your queries, and tools like [GraphQL Code Generator](https://the-guild.dev/graphql/codegen) generate types for them.
+
+Put your schema in its own module, exported as the default export:
+
+```ts
+// src/schema.ts
+import type { Schema } from "use-record-set";
+import { StringField, ForeignKeyField, InverseField } from "use-record-set";
+
+const schema: Schema = {
+  // …
+};
+
+export default schema;
+```
+
+Then use the `use-record-set` command to print the GraphQL schema:
+
+```shell
+npx use-record-set print-schema src/schema.ts -o schema.graphql
+```
+
+Options:
+
+- `-o, --output <file>`: Write the schema to a file instead of stdout.
+- `-e, --export <name>`: Use a named export instead of the default export.
+- `-w, --watch`: Regenerate the schema whenever the schema file changes (requires `--output`).
+
+The schema module is loaded with Node, so it shouldn't import anything that can't run outside the browser (React components, CSS, etc.). TypeScript files are supported natively by Node 22.18+, as long as types are imported with `import type` and no TypeScript-only syntax (e.g. enums) is used. Otherwise, run the command with a loader like [tsx](https://tsx.is): `npx tsx node_modules/.bin/use-record-set …`.
+
+The schema can also be printed programmatically:
+
+```js
+import { printRecordSetSchema } from "use-record-set";
+
+const sdl = printRecordSetSchema(schema);
 ```

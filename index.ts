@@ -13,6 +13,7 @@ import {
   GraphQLString,
   GraphQLTypeResolver,
   executeSync,
+  printSchema,
 } from "graphql";
 import { useEffect, useState } from "react";
 import { v4 as uuid } from "uuid";
@@ -660,6 +661,8 @@ const createRecordSet = (
   };
 };
 
+const printRecordSetSchema = (schema: Schema): string => printSchema(new RecordSet(schema).schema);
+
 const StringField = (): { type: "String" } => ({ type: "String" });
 
 const NumberField = (): { type: "Number" } => ({ type: "Number" });
@@ -708,6 +711,7 @@ export {
   UrlPersistence,
   LocalStoragePersistence,
   createRecordSet,
+  printRecordSetSchema,
   StringField,
   NumberField,
   BooleanField,

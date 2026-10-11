@@ -9,6 +9,9 @@
     "data"
   ],
   "main": "cjs/index.js",
+  "bin": {
+    "use-record-set": "cjs/cli.js"
+  },
   "author": "Haydn Ewers",
   "license": "MIT",
   "private": false,
@@ -18,13 +21,13 @@
   "scripts": {
     "build": "yarn build:declaration && yarn build:cjs && yarn build:umd && yarn build:esm",
     "build:declaration": "tsc index.ts --declaration --emitDeclarationOnly && flowgen index.d.ts -o index.js.flow",
-    "build:cjs": "tsc index.ts --target ES2015 --module CommonJS --outDir cjs",
+    "build:cjs": "tsc index.ts cli.ts --target ES2015 --module CommonJS --outDir cjs",
     "build:umd": "tsc index.ts --target ES2015 --module UMD --moduleResolution node --outDir umd",
     "build:esm": "tsc index.ts --target ESNext --module ESNext --moduleResolution node --outDir esm",
-    "build:test": "tsc test.ts --target ES2015 --module CommonJS --esModuleInterop",
+    "build:test": "tsc test.ts cli.ts --target ES2015 --module CommonJS --esModuleInterop",
     "release": "npx np --no-2fa",
     "test": "yarn test:prettier && yarn test:jest",
-    "test:prettier": "prettier -c index.ts README.md test.ts",
+    "test:prettier": "prettier -c index.ts cli.ts README.md test.ts",
     "test:jest": "yarn build:test && yarn jest test.js --env=jsdom && yarn jest test.js --env=node",
     "version": "yarn build"
   },
@@ -32,6 +35,7 @@
     "index.d.ts",
     "index.js.flow",
     "cjs/index.js",
+    "cjs/cli.js",
     "umd/index.js",
     "esm/index.js",
     "LICENSE",
